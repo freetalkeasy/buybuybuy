@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>團購GO - 辦公室團購系統</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Noto Sans TC','sans-serif']}}}}</script>
+  <style>
+    *{box-sizing:border-box}
+    body{font-family:'Noto Sans TC',sans-serif;margin:0;-webkit-font-smoothing:antialiased}
+    /* Animations - use opacity only to avoid layout shift */
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes popIn{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+    .anim-fade{animation:fadeIn .3s ease-out both}
+    .anim-slide{animation:slideUp .35s ease-out both}
+    .anim-pop{animation:popIn .25s ease-out both}
+    /* Prevent layout shift: reserve space for cards */
+    .card-grid{min-height:120px}
+    .card-hover{transition:transform .2s,box-shadow .2s}.card-hover:hover{transform:translateY(-4px);box-shadow:0 12px 24px rgba(0,0,0,.08)}
+    .toast-enter{animation:slideUp .3s ease-out}
+    .btn-p{background:linear-gradient(135deg,#ea580c,#dc2626);transition:all .15s;color:#fff;border:none;cursor:pointer}.btn-p:hover{filter:brightness(1.08);transform:translateY(-1px)}.btn-p:active{transform:scale(.97)}
+    .btn-b{background:linear-gradient(135deg,#3b82f6,#6366f1);transition:all .15s;color:#fff;border:none;cursor:pointer}.btn-b:hover{filter:brightness(1.08)}.btn-b:active{transform:scale(.97)}
+    .btn-g{background:linear-gradient(135deg,#10b981,#059669);transition:all .15s;color:#fff;border:none;cursor:pointer}.btn-g:hover{filter:brightness(1.08)}.btn-g:active{transform:scale(.97)}
+    .bg-pattern{background-color:#fff7ed;background-image:radial-gradient(circle at 20% 50%,rgba(251,146,60,.06) 0%,transparent 50%),radial-gradient(circle at 80% 20%,rgba(239,68,68,.04) 0%,transparent 50%)}
+    .dash-card{transition:transform .25s,box-shadow .25s;border:2px solid transparent;cursor:pointer}.dash-card:hover{transform:translateY(-6px);box-shadow:0 16px 32px rgba(0,0,0,.1)}
+    input[type="file"]{display:none}
+    .modal-bk{backdrop-filter:blur(4px)}
+    @keyframes spin{to{transform:rotate(360deg)}}.spinner{animation:spin .8s linear infinite;border:3px solid #fed7aa;border-top-color:#ea580c;border-radius:50%;width:24px;height:24px}
+    .m-card{transition:all .2s;border:2px solid transparent}.m-card:hover{border-color:#fb923c;box-shadow:0 8px 20px rgba(0,0,0,.06)}
+    .cpill{padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;user-select:none}
+    .cpill-a{background:#fff7ed;color:#9a3412;border:2px solid #fb923c}.cpill-i{background:#f9fafb;color:#9ca3af;border:2px solid transparent}.cpill-i:hover{background:#f3f4f6;color:#6b7280}
+    /* Option buttons for drink customization */
+    .opt-btn{padding:8px 16px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;border:2px solid #e5e7eb;background:#fff;color:#6b7280;user-select:none;text-align:center;min-width:56px}
+    .opt-btn:hover{border-color:#fb923c;color:#ea580c;background:#fff7ed}
+    .opt-btn.active{border-color:#ea580c;background:#ea580c;color:#fff}
+    .opt-btn-sm{padding:6px 12px;font-size:12px;min-width:44px}
+    /* Size selector */
+    .size-btn{padding:10px 18px;border-radius:14px;font-weight:700;cursor:pointer;transition:all .15s;border:2px solid #e5e7eb;background:#fff;text-align:center;flex:1}
+    .size-btn:hover{border-color:#3b82f6;background:#eff6ff}
+    .size-btn.active{border-color:#3b82f6;background:#3b82f6;color:#fff}
+    /* Quick action chips */
+    .quick-chip{padding:10px 20px;border-radius:14px;font-weight:700;cursor:pointer;transition:all .15s;border:2px solid #fed7aa;background:#fff;color:#ea580c;font-size:14px}
+    .quick-chip:hover{background:#fff7ed;border-color:#fb923c;transform:translateY(-2px)}
+    .quick-chip:active{transform:scale(.96)}
+    /* Order card in detail view */
+    .order-item-card{transition:all .15s;border-left:4px solid transparent}
+    .order-item-card:hover{border-left-color:#ea580c;background:#fff7ed}
+    /* Scrollbar */
+    ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#d4d4d8;border-radius:3px}::-webkit-scrollbar-thumb:hover{background:#a1a1aa}
+    /* Mobile touch improvements */
+    @media(max-width:640px){.opt-btn,.size-btn{padding:10px 12px;font-size:13px;min-width:auto}}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const{useState,useEffect,useRef,useCallback,useMemo}=React;
+const{createClient}=supabase;
+
+// ===== CONFIG =====
+const SURL='https://hxyzapgushermrxpglyi.supabase.co';
+const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4eXphcGd1c2hlcm1yeHBnbHlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwMjIwMTYsImV4cCI6MjA4NjU5ODAxNn0.prtAWZ8O19hSrQNEKJQqWi0vvB_VCIQPH4MfEhE0f-U';
+const sb=createClient(SURL,SKEY);
+
+// ===== HELPERS =====
+const genCode=()=>{let r='';for(let i=0;i<6;i++)r+=Math.floor(Math.random()*10);return r};
+const shareUrl=(code)=>`${location.origin}${location.pathname}?code=${code}`;
+const fmtD=(d)=>new Date(d).toLocaleDateString('zh-TW',{year:'numeric',month:'long',day:'numeric'});
+const isAct=(ed)=>new Date(ed)>=new Date(new Date().toDateString());
+const todayS=()=>new Date().toISOString().split('T')[0];
+const addDays=(n)=>new Date(Date.now()+n*864e5).toISOString().split('T')[0];
+const maxDS=()=>addDays(14);
+const CATS=[{k:'main',l:'🍱 主餐',s:'主餐'},{k:'drink',l:'🧋 飲料',s:'飲料'},{k:'shopping',l:'🛍️ 網購',s:'網購'}];
+const catL=(k)=>(CATS.find(c=>c.k===k)||{}).l||k;
+const SUGARS=['正常','少糖','半糖','微糖','無糖'];
+const ICES=['正常冰','少冰','微冰','去冰','完全去冰','溫','熱'];
+
+// ===== 台灣縣市鄉鎮區 =====
+const TW_REGIONS={
+'臺北市':['中正區','大同區','中山區','松山區','大安區','萬華區','信義區','士林區','北投區','內湖區','南港區','文山區'],
+'新北市':['板橋區','新莊區','中和區','永和區','土城區','樹林區','三峽區','鶯歌區','三重區','蘆洲區','五股區','泰山區','林口區','八里區','淡水區','三芝區','石門區','金山區','萬里區','汐止區','瑞芳區','貢寮區','平溪區','雙溪區','新店區','深坑區','石碇區','坪林區','烏來區'],
+'桃園市':['桃園區','中壢區','平鎮區','八德區','楊梅區','蘆竹區','大溪區','龍潭區','龜山區','大園區','觀音區','新屋區','復興區'],
+'臺中市':['中區','東區','南區','西區','北區','北屯區','西屯區','南屯區','太平區','大里區','霧峰區','烏日區','豐原區','后里區','石岡區','東勢區','和平區','新社區','潭子區','大雅區','神岡區','大肚區','沙鹿區','龍井區','梧棲區','清水區','大甲區','外埔區','大安區'],
+'臺南市':['中西區','東區','南區','北區','安平區','安南區','永康區','歸仁區','新化區','左鎮區','玉井區','楠西區','南化區','仁德區','關廟區','龍崎區','官田區','麻豆區','佳里區','西港區','七股區','將軍區','學甲區','北門區','新營區','後壁區','白河區','東山區','六甲區','下營區','柳營區','鹽水區','善化區','大內區','山上區','新市區','安定區'],
+'高雄市':['楠梓區','左營區','鼓山區','三民區','鹽埕區','前金區','新興區','苓雅區','前鎮區','旗津區','小港區','鳳山區','大寮區','鳥松區','林園區','仁武區','大樹區','大社區','岡山區','路竹區','橋頭區','梓官區','彌陀區','永安區','燕巢區','田寮區','阿蓮區','茄萣區','湖內區','旗山區','美濃區','內門區','杉林區','甲仙區','六龜區','茂林區','桃源區','那瑪夏區'],
+'基隆市':['仁愛區','信義區','中正區','中山區','安樂區','暖暖區','七堵區'],
+'新竹市':['東區','北區','香山區'],
+'嘉義市':['東區','西區'],
+'新竹縣':['竹北市','竹東鎮','新埔鎮','關西鎮','湖口鄉','新豐鄉','芎林鄉','橫山鄉','北埔鄉','寶山鄉','峨眉鄉','尖石鄉','五峰鄉'],
+'苗栗縣':['苗栗市','頭份市','竹南鎮','後龍鎮','通霄鎮','苑裡鎮','卓蘭鎮','造橋鄉','西湖鄉','頭屋鄉','公館鄉','銅鑼鄉','三義鄉','大湖鄉','獅潭鄉','三灣鄉','南庄鄉','泰安鄉'],
+'彰化縣':['彰化市','員林市','和美鎮','鹿港鎮','溪湖鎮','二林鎮','田中鎮','北斗鎮','花壇鄉','芬園鄉','大村鄉','永靖鄉','伸港鄉','線西鄉','福興鄉','秀水鄉','埔心鄉','埔鹽鄉','大城鄉','芳苑鄉','竹塘鄉','社頭鄉','二水鄉','田尾鄉','埤頭鄉','溪州鄉'],
+'南投縣':['南投市','埔里鎮','草屯鎮','竹山鎮','集集鎮','名間鄉','鹿谷鄉','中寮鄉','魚池鄉','國姓鄉','水里鄉','信義鄉','仁愛鄉'],
+'雲林縣':['斗六市','斗南鎮','虎尾鎮','西螺鎮','土庫鎮','北港鎮','古坑鄉','大埤鄉','莿桐鄉','林內鄉','二崙鄉','崙背鄉','麥寮鄉','東勢鄉','褒忠鄉','臺西鄉','元長鄉','四湖鄉','口湖鄉','水林鄉'],
+'嘉義縣':['太保市','朴子市','布袋鎮','大林鎮','民雄鄉','溪口鄉','新港鄉','六腳鄉','東石鄉','義竹鄉','鹿草鄉','水上鄉','中埔鄉','竹崎鄉','梅山鄉','番路鄉','大埔鄉','阿里山鄉'],
+'屏東縣':['屏東市','潮州鎮','東港鎮','恆春鎮','萬丹鄉','長治鄉','麟洛鄉','九如鄉','里港鄉','鹽埔鄉','高樹鄉','萬巒鄉','內埔鄉','竹田鄉','新埤鄉','枋寮鄉','新園鄉','崁頂鄉','林邊鄉','南州鄉','佳冬鄉','琉球鄉','車城鄉','滿州鄉','枋山鄉','三地門鄉','霧臺鄉','瑪家鄉','泰武鄉','來義鄉','春日鄉','獅子鄉','牡丹鄉'],
+'宜蘭縣':['宜蘭市','羅東鎮','蘇澳鎮','頭城鎮','礁溪鄉','壯圍鄉','員山鄉','冬山鄉','五結鄉','三星鄉','大同鄉','南澳鄉'],
+'花蓮縣':['花蓮市','鳳林鎮','玉里鎮','新城鄉','吉安鄉','壽豐鄉','光復鄉','豐濱鄉','瑞穗鄉','富里鄉','秀林鄉','萬榮鄉','卓溪鄉'],
+'臺東縣':['臺東市','成功鎮','關山鎮','卑南鄉','大武鄉','太麻里鄉','東河鄉','長濱鄉','鹿野鄉','池上鄉','綠島鄉','蘭嶼鄉','延平鄉','金峰鄉','達仁鄉','海端鄉'],
+'澎湖縣':['馬公市','湖西鄉','白沙鄉','西嶼鄉','望安鄉','七美鄉'],
+'金門縣':['金城鎮','金湖鎮','金沙鎮','金寧鄉','烈嶼鄉','烏坵鄉'],
+'連江縣':['南竿鄉','北竿鄉','莒光鄉','東引鄉']
+};
+const TW_CITIES=Object.keys(TW_REGIONS);
+const parseCityDist=(addr)=>{if(!addr)return{city:'',district:'',street:addr||''};for(const c of TW_CITIES){if(addr.startsWith(c)){const rest=addr.slice(c.length);const dists=TW_REGIONS[c];for(const d of dists){if(rest.startsWith(d))return{city:c,district:d,street:rest.slice(d.length).trim()}}return{city:c,district:'',street:rest.trim()}}}return{city:'',district:'',street:addr}};
+
+// ===== SHARED COMPONENTS =====
+function Toast({message,type='success',onClose}){
+  useEffect(()=>{const t=setTimeout(onClose,2500);return()=>clearTimeout(t)},[]);
+  const c={success:'bg-green-600',error:'bg-red-600',info:'bg-blue-600',warning:'bg-amber-600'};
+  return(<div className="fixed top-4 right-4 z-[100] toast-enter"><div className={`${c[type]} text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-2 max-w-xs`}><span className="text-sm font-medium">{message}</span><button onClick={onClose} className="ml-1 opacity-70 hover:opacity-100 text-lg leading-none">×</button></div></div>);
+}
+
+function Modal({children,onClose,title,wide}){
+  return(<div className="fixed inset-0 bg-black/50 modal-bk z-50 flex items-center justify-center p-3" onClick={onClose}>
+    <div className={`bg-white rounded-2xl shadow-2xl ${wide?'max-w-3xl':'max-w-lg'} w-full max-h-[92vh] overflow-hidden anim-pop flex flex-col`} onClick={e=>e.stopPropagation()}>
+      {title&&<div className="bg-gradient-to-r from-orange-500 to-red-500 px-5 py-3.5 text-white flex items-center justify-between shrink-0"><h3 className="text-lg font-bold">{title}</h3><button onClick={onClose} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-lg">×</button></div>}
+      <div className="overflow-y-auto flex-1">{children}</div>
+    </div>
+  </div>);
+}
+
+function ShareModal({groupBuy:g,onClose}){
+  const[cp,setCp]=useState(null);
+  const url=shareUrl(g.code);
+  const doCp=async(t,tp)=>{try{await navigator.clipboard.writeText(t)}catch{const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();document.execCommand('copy');document.body.removeChild(a)};setCp(tp);setTimeout(()=>setCp(null),2000)};
+  const msg=`🍱 團購開團啦！\n\n📌 ${g.title}\n🏪 商家：${g.shop_name}\n📅 截止：${fmtD(g.end_date)}\n\n👉 點擊加入：${url}\n🔑 代碼：${g.code}${g.password?'\n🔐 密碼：'+g.password:''}`;
+  return(<Modal onClose={onClose} title="🎉 團購建立成功！"><div className="p-5 space-y-4">
+    <div className="bg-orange-50 rounded-xl p-4 border border-orange-100"><p className="font-bold text-orange-900 text-lg">{g.title}</p><p className="text-orange-700 text-sm mt-1">🏪 {g.shop_name} ・ 📅 截止 {fmtD(g.end_date)}</p></div>
+    <div><label className="text-sm font-medium text-gray-500 mb-1.5 block">分享連結</label><div className="flex gap-2"><input readOnly value={url} className="flex-1 px-3 py-2.5 bg-gray-50 border rounded-xl text-sm font-mono truncate"/><button onClick={()=>doCp(url,'url')} className={`px-4 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap ${cp==='url'?'bg-green-500 text-white':'bg-orange-100 text-orange-700 hover:bg-orange-200'}`}>{cp==='url'?'✅':'📋 複製'}</button></div></div>
+    <div><label className="text-sm font-medium text-gray-500 mb-1.5 block">團購代碼</label><div className="flex gap-2"><div className="flex-1 px-4 py-2.5 bg-gray-50 border rounded-xl text-center"><span className="text-2xl font-black tracking-[.4em] text-orange-900">{g.code}</span></div><button onClick={()=>doCp(g.code,'code')} className={`px-4 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap ${cp==='code'?'bg-green-500 text-white':'bg-orange-100 text-orange-700 hover:bg-orange-200'}`}>{cp==='code'?'✅':'📋 複製'}</button></div></div>
+    {g.password&&<div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3"><p className="text-sm text-yellow-800">🔐 密碼：<strong>{g.password}</strong></p></div>}
+    <button onClick={()=>doCp(msg,'line')} className={`w-full py-3.5 rounded-xl font-bold text-base flex items-center justify-center gap-2 ${cp==='line'?'bg-green-500 text-white':'btn-p shadow-lg'}`}>{cp==='line'?'✅ 已複製完整訊息！':'📲 複製分享訊息（貼到 Line）'}</button>
+    <details className="text-sm"><summary className="text-gray-400 cursor-pointer hover:text-gray-600">預覽 ▾</summary><div className="mt-2 p-3 bg-gray-50 rounded-xl text-gray-600 whitespace-pre-line border">{msg}</div></details>
+  </div></Modal>);
+}
+
+// ===== IMPROVED OCR =====
+function OcrScanner({onResult,onClose,merchantName}){
+  const[prog,setProg]=useState(0);const[stat,setStat]=useState('準備中...');const[scanning,setScanning]=useState(false);const[img,setImg]=useState(null);const[result,setResult]=useState('');const fRef=useRef();const canvasRef=useRef();
+
+  const onFile=(e)=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setImg(ev.target.result);r.readAsDataURL(f)};
+
+  // Image preprocessing for better OCR
+  const preprocessImage=(imgSrc)=>new Promise((resolve)=>{
+    const canvas=canvasRef.current||document.createElement('canvas');
+    const ctx=canvas.getContext('2d');const image=new Image();
+    image.onload=()=>{
+      // Scale up small images
+      const scale=Math.max(1,1500/Math.max(image.width,image.height));
+      canvas.width=image.width*scale;canvas.height=image.height*scale;
+      ctx.drawImage(image,0,0,canvas.width,canvas.height);
+      // Increase contrast & convert to grayscale
+      const imgData=ctx.getImageData(0,0,canvas.width,canvas.height);
+      const d=imgData.data;
+      for(let i=0;i<d.length;i+=4){
+        const gray=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+        // Apply threshold for cleaner text
+        const v=gray>140?255:(gray>80?gray*1.5:0);
+        d[i]=d[i+1]=d[i+2]=Math.min(255,v);
+      }
+      ctx.putImageData(imgData,0,0);
+      // Apply sharpening
+      resolve(canvas.toDataURL('image/png'));
+    };
+    image.src=imgSrc;
+  });
+
+  // Post-process OCR text to fix common errors
+  const cleanOcrText=(text)=>{
+    let t=text;
+    // Fix common Chinese OCR errors
+    t=t.replace(/[|｜l1]/g,m=>m==='|'||m==='｜'?'':m);
+    // Fix price patterns: ensure space between name and number
+    t=t.replace(/([^\d\s])(\d{2,})/g,'$1 $2');
+    // Remove garbage characters
+    t=t.replace(/[^\u4e00-\u9fff\u3400-\u4dbf\w\s\.\-\+\(\)（）\/,，、$＄:：·]+/g,' ');
+    // Clean up multiple spaces
+    t=t.replace(/[ \t]+/g,' ');
+    // Remove very short meaningless lines
+    t=t.split('\n').filter(l=>l.trim().length>1).join('\n');
+    return t.trim();
+  };
+
+  const doOcr=async()=>{if(!img)return;setScanning(true);setStat('前處理圖片...');setProg(5);
+    try{
+      const processed=await preprocessImage(img);
+      setProg(10);setStat('載入辨識引擎...');
+      const w=await Tesseract.createWorker('chi_tra+eng',1,{
+        logger:m=>{if(m.status==='recognizing text'){setProg(10+Math.round(m.progress*85));setStat(`辨識中... ${Math.round(m.progress*100)}%`)}}
+      });
+      await w.setParameters({
+        tessedit_pageseg_mode:'6',
+        preserve_interword_spaces:'1',
+      });
+      const{data:{text}}=await w.recognize(processed);
+      await w.terminate();
+      const cleaned=cleanOcrText(text);
+      setResult(cleaned);setStat('辨識完成！');setProg(100);
+    }catch(err){setStat('失敗：'+err.message);setProg(0)}
+    setScanning(false);
+  };
+
+  return(<Modal onClose={onClose} title={`📸 拍照建立菜單${merchantName?' — '+merchantName:''}`} wide><div className="p-5 space-y-4">
+    <canvas ref={canvasRef} style={{display:'none'}}/>
+    <p className="text-sm text-gray-500">上傳菜單照片，系統自動辨識。建議拍攝清晰、光線充足的照片。</p>
+    <div className="flex flex-wrap gap-3"><input ref={fRef} type="file" accept="image/*" capture="environment" onChange={onFile}/>
+      <button onClick={()=>fRef.current?.click()} className="px-5 py-3 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700">📷 拍照 / 選圖</button>
+      {img&&!scanning&&<button onClick={doOcr} className="px-5 py-3 btn-b rounded-xl font-bold">🔍 開始辨識</button>}</div>
+    {img&&<div className="border-2 border-dashed border-orange-200 rounded-xl p-2 bg-orange-50"><img src={img} className="max-h-56 mx-auto rounded-lg"/></div>}
+    {scanning&&<div className="space-y-2"><div className="flex items-center gap-3"><div className="spinner"></div><span className="text-sm text-orange-700">{stat}</span></div><div className="w-full bg-gray-200 rounded-full h-2.5"><div className="bg-orange-500 h-2.5 rounded-full transition-all duration-300" style={{width:`${prog}%`}}></div></div></div>}
+    {result&&<div className="space-y-3"><label className="text-sm font-bold text-orange-900">辨識結果（可編輯）：</label>
+      <textarea value={result} onChange={e=>setResult(e.target.value)} rows={8} className="w-full px-4 py-3 border-2 border-orange-200 rounded-xl focus:border-orange-500 focus:outline-none text-sm resize-none font-mono"/>
+      <p className="text-xs text-gray-400">每行一個品項，格式「品名 價格」例如：雞腿便當 85</p>
+      <button onClick={()=>onResult(result)} className="w-full py-3 btn-p rounded-xl font-bold shadow-lg">✅ 使用辨識結果建立菜單</button></div>}
+    {!img&&!scanning&&<div className="border-2 border-dashed border-gray-200 rounded-xl p-10 text-center text-gray-400"><p className="text-4xl mb-2">📷</p><p className="text-sm">點擊上方按鈕拍照或選圖</p></div>}
+  </div></Modal>);
+}
+
+// ===== MENU ITEM FORM (with sizes support) =====
+// Used for EDITING a single existing item
+function MenuItemForm({onSave,editData,onCancel,category:defaultCat}){
+  const empty={name:'',price:'',category:defaultCat||'main',description:'',is_public:true,sizes:null,has_custom_options:false};
+  const[f,setF]=useState(editData||empty);
+  const[useSizes,setUseSizes]=useState(!!editData?.sizes);
+  const[sizes,setSizes]=useState(editData?.sizes||[{label:'',price:''}]);
+  useEffect(()=>{if(editData){setF(editData);setUseSizes(!!editData.sizes);setSizes(editData.sizes||[{label:'',price:''}])}},[editData]);
+
+  const addSize=()=>setSizes(p=>[...p,{label:'',price:''}]);
+  const rmSize=(i)=>setSizes(p=>p.filter((_,j)=>j!==i));
+  const updSize=(i,k,v)=>setSizes(p=>p.map((s,j)=>j===i?{...s,[k]:v}:s));
+
+  const submit=(e)=>{e.preventDefault();if(!f.name.trim())return;
+    const finalSizes=useSizes?sizes.filter(s=>s.label&&s.price).map(s=>({...s,price:parseFloat(s.price)})):null;
+    if(useSizes&&(!finalSizes||finalSizes.length===0)){alert('請至少輸入一個規格');return}
+    const price=useSizes?finalSizes[0].price:parseFloat(f.price||0);
+    onSave({...f,price,sizes:finalSizes,has_custom_options:f.has_custom_options||false});
+    if(!editData){setF(empty);setUseSizes(false);setSizes([{label:'',price:''}])}
+  };
+
+  const isMainOrDrink=f.category==='main'||f.category==='drink';
+  const sizeHint=f.category==='main'?'例如：大碗、小碗':'例如：大杯、中杯、小杯';
+
+  return(<form onSubmit={submit} className="space-y-4">
+    <div className="grid sm:grid-cols-3 gap-3">
+      <div><label className="block text-sm font-bold text-orange-900 mb-1">品名 *</label><input type="text" required value={f.name} onChange={e=>setF({...f,name:e.target.value})} placeholder="雞腿便當" className="w-full px-3 py-2.5 border-2 border-orange-200 rounded-xl focus:border-orange-500 focus:outline-none"/></div>
+      {!useSizes&&<div><label className="block text-sm font-bold text-orange-900 mb-1">價格 NT$ *</label><input type="number" required={!useSizes} value={f.price} onChange={e=>setF({...f,price:e.target.value})} min="0" step="1" placeholder="85" className="w-full px-3 py-2.5 border-2 border-orange-200 rounded-xl focus:border-orange-500 focus:outline-none"/></div>}
+      <div><label className="block text-sm font-bold text-orange-900 mb-1">分類</label><select value={f.category} onChange={e=>setF({...f,category:e.target.value})} className="w-full px-3 py-2.5 border-2 border-orange-200 rounded-xl focus:border-orange-500 focus:outline-none">{CATS.map(c=><option key={c.k} value={c.k}>{c.l}</option>)}</select></div>
+    </div>
+
+    {isMainOrDrink&&<div className="flex flex-wrap gap-4">
+      <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={useSizes} onChange={e=>{setUseSizes(e.target.checked);if(!e.target.checked)setSizes([{label:'',price:''}])}} className="w-4 h-4 rounded accent-orange-600"/><span className="text-sm text-gray-700">設定多種規格（{sizeHint}）</span></label>
+      {f.category==='drink'&&<label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={f.has_custom_options} onChange={e=>setF({...f,has_custom_options:e.target.checked})} className="w-4 h-4 rounded accent-orange-600"/><span className="text-sm text-gray-700">甜度/冰塊選項</span></label>}
+    </div>}
+
+    {useSizes&&<div className="bg-blue-50 rounded-xl p-4 border border-blue-100 space-y-2">
+      <p className="text-sm font-bold text-blue-900 mb-2">規格設定（{sizeHint}）</p>
+      {sizes.map((s,i)=><div key={i} className="flex gap-2 items-center">
+        <input type="text" value={s.label} onChange={e=>updSize(i,'label',e.target.value)} placeholder="規格名稱" className="flex-1 px-3 py-2 border rounded-lg text-sm"/>
+        <input type="number" value={s.price} onChange={e=>updSize(i,'price',e.target.value)} placeholder="價格" min="0" className="w-24 px-3 py-2 border rounded-lg text-sm"/>
+        {sizes.length>1&&<button type="button" onClick={()=>rmSize(i)} className="text-red-400 hover:text-red-600 text-lg px-1">×</button>}
+      </div>)}
+      <button type="button" onClick={addSize} className="text-sm text-blue-600 hover:text-blue-800 font-bold">＋ 新增規格</button>
+    </div>}
+
+    <div className="flex items-center justify-between pt-1">
+      <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={f.is_public} onChange={e=>setF({...f,is_public:e.target.checked})} className="w-4 h-4 rounded accent-orange-600"/><span className="text-sm text-gray-600">公開</span></label>
+      <div className="flex gap-2">{editData&&<button type="button" onClick={onCancel} className="px-4 py-2 bg-gray-200 text-gray-600 rounded-xl font-bold text-sm">取消</button>}<button type="submit" className="px-5 py-2 btn-p rounded-xl font-bold text-sm shadow">{editData?'💾 儲存':'➕ 新增'}</button></div>
+    </div>
+  </form>);
+}
+
+// ===== BATCH MENU FORM (新增多品項) =====
+const MENU_PRESETS=[
+  {group:'🍗 經典古早味',items:['炸排骨飯','滷排骨飯','炸雞腿飯','滷雞腿飯','焢肉飯（三層肉）','腳庫飯（腿庫）','香腸飯']},
+  {group:'🍖 港式燒臘',items:['三寶飯','招牌飯','叉燒飯','油雞腿飯','燒鴨飯','燒肉飯（脆皮）','廣州炒飯']},
+  {group:'🍣 日式／炸物',items:['日式炸豬排飯','腰內肉飯','唐揚雞飯','烤鯖魚飯','秋刀魚飯','蒲燒鯛魚飯','牛丼','親子丼']},
+  {group:'🔥 台式熱炒／燴飯',items:['宮保雞丁飯','蔥爆牛肉飯','三杯雞飯','糖醋排骨飯','麻婆豆腐飯','黑胡椒牛柳飯']},
+  {group:'🥗 健康／水煮',items:['水煮雞胸餐盒','舒肥嫩雞餐盒','清蒸鱈魚飯','蒜泥白肉飯','藜麥飯餐盒']},
+  {group:'🥬 素食',items:['什錦素燴飯','素排飯','素鰻魚飯','羅漢齋飯','紫米飯糰']},
+];
+
+// ===== 連鎖飲料品牌菜單（初始種子資料，實際使用 DB） =====
+const SEED_BRANDS=[
+{brand:'清心福全',emoji:'🧋',sizes:['M','L','XL'],
+sugars:SUGARS,ices:ICES,
+toppings:[[10,['珍珠','椰果','寒天','QQ','荔枝QQ','仙草凍','小紫蘇','蘆薈','紅豆']],[15,['熊貓(珍珠+寒天)','統一布丁']],[20,['白葡萄凍']]],
+cats:[
+{n:'奶茶繽紛樂',items:[
+{n:'熊貓黑糖珍奶茶',p:[null,60,95]},{n:'琥珀奶茶',p:[null,50,null]},{n:'茉香奶茶',p:[null,50,null]},{n:'伯爵奶茶',p:[null,50,null]},{n:'焙茶烤奶',p:[null,50,null]},{n:'沖繩黑糖風味奶茶',p:[null,50,85]},{n:'珍珠奶茶',p:[null,55,90]},{n:'仙草凍奶茶',p:[null,55,90]},{n:'布丁奶茶',p:[null,60,null]},{n:'紅豆玄米奶茶',p:[null,60,null]}]},
+{n:'果然纖滋味',items:[
+{n:'招牌水果茶',p:[null,70,null]},{n:'鮮果雙Q綠茶',p:[null,65,100]},{n:'墾丁冰茶',p:[null,50,85]},{n:'荔枝QQ金萱',p:[null,45,80]},{n:'梅果綠茶',p:[null,45,null]},{n:'養樂多綠茶',p:[null,50,null]},{n:'鳳梨清茶',p:[null,60,null]},{n:'芭樂檸檬玉露',p:[null,60,null]},{n:'橙香金萱',p:[null,65,null]}]},
+{n:'鮮萃茶',items:[
+{n:'古香烏龍',p:[null,30,60]},{n:'阿里山冰茶',p:[null,30,60]},{n:'頂級茉莉綠茶',p:[null,30,60]},{n:'琥珀紅茶',p:[null,30,60]},{n:'文山清茶',p:[null,35,65]},{n:'凍頂烏龍茶',p:[null,35,65]},{n:'烏龍綠茶',p:[null,35,65]},{n:'伯爵紅茶',p:[null,35,65]},{n:'茶花綠茶',p:[null,35,65]},{n:'炭燒焙茶',p:[null,35,65]},{n:'日式玄米茶',p:[null,35,65]},{n:'鮮露金萱茶',p:[null,35,65]}]},
+{n:'鮮奶系列',items:[
+{n:'聖塔路黑可可',p:[null,60,95]},{n:'抹茶拿鐵',p:[null,60,95]},{n:'紅茶拿鐵',p:[null,60,95]},{n:'綠茶拿鐵',p:[null,60,95]},{n:'抹茶紅豆珍珠',p:[null,65,100]},{n:'伯爵拿鐵',p:[null,65,100]}]},
+{n:'奶蓋系列',items:[
+{n:'琥珀奶蓋',p:[null,50,null]},{n:'焙茶奶蓋',p:[null,55,null]},{n:'白桃風味烏龍奶蓋',p:[null,55,null]}]},
+{n:'季節限定',items:[
+{n:'翡翠檸檬冰鑽',p:[null,55,90]},{n:'可可冰鑽',p:[null,55,90]},{n:'抹茶冰鑽',p:[null,55,90]}]},
+{n:'無咖啡因',items:[
+{n:'黑糖珍珠撞奶',p:[50,65,null],cf:1},{n:'黑糖珍珠厚鮮奶',p:[null,85,null],cf:1},{n:'水晶冬瓜茶',p:[null,40,80],cf:1},{n:'檸檬CC',p:[null,45,80],cf:1},{n:'藍莓果茶',p:[null,50,null],cf:1},{n:'鮮桔檸檬飲',p:[null,55,90],cf:1},{n:'冬瓜檸檬',p:[null,60,95],cf:1},{n:'蘆薈好蜜',p:[null,55,90],cf:1},{n:'蜂蜜檸好',p:[null,65,100],cf:1},{n:'紅心芭樂梅',p:[null,70,null],cf:1},{n:'紅心芭樂汁',p:[null,65,null],cf:1},{n:'橙美荔',p:[null,65,null],cf:1},{n:'薑汁撞奶',p:[null,65,null],cf:1},{n:'黑糖薑茶/桂圓紅棗茶',p:[null,55,null],cf:1},{n:'鳳梨冰鑽',p:[null,60,95],cf:1},{n:'青梅冰鑽',p:[null,55,90],cf:1}]},
+{n:'雨林認證',items:[
+{n:'四季春/蜜香紅茶',p:[null,40,null]},{n:'玉露煎茶',p:[null,40,null]},{n:'薄綠荷茶',p:[null,40,null]},{n:'東方美人茶',p:[null,40,null]},{n:'蜜香果茶',p:[null,50,null]},{n:'香檳烏龍',p:[null,60,null]},{n:'寒天四季奶青',p:[null,65,null]}]},
+{n:'特等茶',items:[
+{n:'阿里山里佳甘露',p:[null,50,null]},{n:'日月潭紅玉',p:[null,50,null]}]}
+]},
+{brand:'50嵐',emoji:'🫧',sizes:['L(杯)','瓶'],
+sugars:SUGARS,ices:ICES,toppings:[],
+cats:[
+{n:'果粒茶系列',items:[
+{n:'香橙果粒茶',p:[70,100]},{n:'柳橙果粒茶',p:[65,95]},{n:'葡萄柚果粒茶',p:[60,90]},{n:'葡萄柚果粒蜜茶',p:[60,90]},{n:'葡萄柚果粒多多',p:[65,null]},{n:'奇異果果粒茶',p:[65,100],t:'3-12月限定'}]},
+{n:'獨家特調',items:[
+{n:'梅子冰茶',p:[30,45],t:'甜度固定'},{n:'梅子綠茶',p:[40,null]},{n:'多多綠茶',p:[45,75]},{n:'冬瓜茶',p:[25,null],t:'甜度固定'},{n:'冬瓜青茶',p:[30,null],t:'甜度固定'},{n:'冬瓜檸檬',p:[45,75],t:'甜度固定'}]},
+{n:'原味茶',items:[
+{n:'高山金萱茶',p:[30,45]},{n:'翡翠綠茶',p:[30,45]},{n:'錫蘭紅茶',p:[30,45]},{n:'文山青茶',p:[30,45]},{n:'古早味紅茶',p:[30,45]},{n:'金萱雙Q',p:[40,55],t:'波霸+椰果'},{n:'金萱三Q',p:[45,60],t:'珍珠+波霸+椰果'}]},
+{n:'香醇系列（鮮奶）',items:[
+{n:'紅茶拿鐵',p:[55,85]},{n:'鐵觀音拿鐵',p:[55,85]},{n:'波霸紅茶拿鐵',p:[55,85]},{n:'阿華田拿鐵',p:[65,95]},{n:'玫瑰紅茶拿鐵',p:[65,95]},{n:'布丁紅茶拿鐵',p:[65,null]},{n:'搖滾波波紅茶拿鐵',p:[65,null],t:'葡萄波波+珍珠布蕾'},{n:'搖滾波波紅茶拿鐵（大）',p:[85,null]}]},
+{n:'濃醇系列（奶精）',items:[
+{n:'錫蘭奶茶',p:[45,70]},{n:'鐵觀音奶茶',p:[45,70]},{n:'波霸奶茶',p:[45,70]},{n:'椰果奶茶',p:[45,70]},{n:'咖啡凍奶茶',p:[45,70]},{n:'仙草凍奶茶',p:[45,null]},{n:'玫瑰奶茶',p:[55,80]},{n:'布丁奶茶',p:[55,null]},{n:'阿華田',p:[60,85]},{n:'搖滾波波奶茶',p:[55,null],t:'葡萄波波+珍珠布蕾'},{n:'搖滾波波奶茶（大）',p:[75,null]},{n:'珍芋奶茶',p:[60,null],t:'珍珠+芋圓'}]}
+]},
+{brand:'CoCo都可',emoji:'🥤',sizes:['M(中杯)','L(大杯)'],
+sugars:SUGARS,ices:ICES,toppings:[],
+cats:[
+{n:'找好茶',items:[
+{n:'茉莉綠茶',p:[25,30]},{n:'阿薩姆紅茶',p:[25,30]},{n:'四季春青茶',p:[25,30]},{n:'黃金烏龍',p:[25,30]},{n:'1號(四季春+珍波椰)',p:[30,40]}]},
+{n:'人氣必點',items:[
+{n:'波霸綠/紅',p:[30,40],r:1},{n:'微檸檬紅/青',p:[30,40],r:1},{n:'檸檬綠/青',p:[35,50],r:1},{n:'梅の綠',p:[35,50],r:1},{n:'8冰綠',p:[35,50],r:1},{n:'多多綠',p:[35,50],r:1},{n:'冰淇淋紅茶',p:[35,50],r:1},{n:'柚子紅',p:[35,50]},{n:'旺來紅',p:[35,50]},{n:'鮮柚綠',p:[45,60],t:'4-8月,10-1月限定'}]},
+{n:'找奶茶',items:[
+{n:'奶茶',p:[35,50]},{n:'奶綠',p:[35,50]},{n:'烏龍奶',p:[35,50]},{n:'珍珠奶茶',p:[35,50]},{n:'珍珠奶綠',p:[35,50]},{n:'波霸奶茶',p:[35,50]},{n:'波霸奶綠',p:[35,50]},{n:'燕麥奶茶',p:[35,50]},{n:'紅茶瑪奇朵',p:[35,50],t:'鮮奶油'},{n:'椰果奶茶',p:[35,50]},{n:'椰果奶綠',p:[35,50]},{n:'阿華田',p:[40,55]},{n:'冰淇淋奶茶',p:[45,60]}]},
+{n:'找拿鐵（鮮奶）',items:[
+{n:'紅茶拿鐵',p:[45,60]},{n:'珍珠紅茶拿鐵',p:[45,60]},{n:'波霸紅茶拿鐵',p:[45,60]},{n:'燕麥紅茶拿鐵',p:[45,60]},{n:'阿華田拿鐵',p:[50,70]},{n:'冰淇淋紅茶拿鐵',p:[50,70]}]},
+{n:'找新鮮',items:[
+{n:'8冰茶',p:[35,50],cf:1,t:'無咖啡因'},{n:'柚子茶',p:[35,50]},{n:'檸檬汁',p:[45,60]},{n:'葡萄柚汁',p:[45,60],t:'4-8月,10-1月限定'},{n:'金桔檸檬',p:[45,60]},{n:'檸檬梅汁',p:[45,60]},{n:'檸檬多多',p:[50,70]},{n:'葡萄柚多多',p:[50,70],t:'4-8月,10-1月限定'}]}
+]},
+{brand:'可不可 KEBUKE',emoji:'🍵',sizes:['M(中杯)','L(大杯)'],
+sugars:['無糖','一分糖','微糖','半糖','少糖','全糖'],
+ices:['熱','溫','常溫','去冰','微冰','少冰','正常冰'],
+toppings:[[10,['白玉(珍珠)','水玉(蒟蒻)']],[15,['墨玉(咖啡凍)']]],
+cats:[
+{n:'乎乾好茶',items:[
+{n:'熟成紅茶',p:[30,35],r:1,t:'帶果香的斯里蘭卡紅茶'},{n:'麗春紅茶',p:[30,35],t:'帶花香'},{n:'烏米紅茶',p:[30,35],t:'帶米香(慢火烘焙)'},{n:'春芽綠茶',p:[30,35],t:'清新甘甜'},{n:'胭脂紅茶',p:[40,45],r:1,t:'帶蜜桃果香'}]},
+{n:'乎乾冬瓜',items:[
+{n:'雪花冷露',p:[30,35],cf:1,t:'手工冬瓜茶'},{n:'熟成冷露',p:[35,40],t:'紅茶+冬瓜'},{n:'春芽冷露',p:[35,40],r:1,t:'綠茶+冬瓜'},{n:'胭脂冷露',p:[40,45],t:'蜜桃紅+冬瓜'},{n:'檸檬冷露',p:[45,55],cf:1,t:'檸檬+冬瓜'}]},
+{n:'乎乾手作',items:[
+{n:'熟檸紅茶',p:[40,50],r:1,t:'整顆檸檬+紅茶'},{n:'春檸綠茶',p:[40,50],t:'整顆檸檬+綠茶'},{n:'春梅冰茶',p:[45,55],r:1,cf:1,t:'冬瓜+梅子'},{n:'太妃熟成',p:[45,50],r:1,t:'咖啡紅茶(特濃+10)'},{n:'金蜜熟成',p:[48,58],t:'100%黃金蜂蜜'},{n:'胭脂多多',p:[50,60],co:1,t:'蜜桃紅+養樂多'}]},
+{n:'乎乾好眠（無咖啡因）',items:[
+{n:'輕纖穀奈茶',p:[35,45],r:1,cf:1,t:'穀物茶'},{n:'穀奈冷露',p:[40,50],cf:1},{n:'穀奈歐蕾',p:[59,69],cf:1},{n:'金蜜檸檬',p:[48,58],cf:1,t:'蜂蜜+檸檬'}]},
+{n:'乎乾奶茶',items:[
+{n:'熟成奶茶',p:[45,55]},{n:'春芽奶茶',p:[45,55],r:1},{n:'胭脂奶茶',p:[50,60]},{n:'白玉奶茶',p:[50,60],r:1,t:'含白玉珍珠'}]},
+{n:'乎乾鮮奶茶',items:[
+{n:'熟成歐蕾',p:[55,65],t:'紅茶拿鐵'},{n:'冷露歐蕾',p:[55,65],cf:1,t:'冬瓜鮮奶'},{n:'金蜜歐蕾',p:[60,70]},{n:'胭脂歐蕾',p:[59,69],r:1,t:'蜜桃鮮奶茶'},{n:'白玉歐蕾',p:[60,70],r:1,t:'珍珠鮮奶茶'},{n:'鴛鴦歐蕾',p:[60,70],t:'咖啡鮮奶茶'},{n:'熟成榛果歐蕾',p:[60,70]},{n:'墨玉鴛鴦歐蕾',p:[70,80],co:1,t:'含咖啡凍'}]},
+{n:'乎乾冰淇淋',items:[
+{n:'雪藏紅茶',p:[null,60],co:1,t:'冰淇淋紅茶'},{n:'雪藏奶茶',p:[null,69],co:1,t:'冰淇淋奶茶'}]}
+]}
+];
+
+function BatchMenuForm({onBatchSave,onClose}){
+  const emptyRow=()=>({_key:Date.now()+Math.random(),name:'',price:'',category:'main',has_custom_options:false});
+  const[rows,setRows]=useState([emptyRow(),emptyRow(),emptyRow()]);
+  const[saved,setSaved]=useState([]);
+  const[saving,setSaving]=useState(false);
+  const[presetOpen,setPresetOpen]=useState(false);
+  const[presetSel,setPresetSel]=useState({});
+  const nameRefs=useRef({});
+
+  const updRow=(i,k,v)=>setRows(p=>p.map((r,j)=>j===i?{...r,[k]:v}:r));
+  const rmRow=(i)=>setRows(p=>p.length<=1?[emptyRow()]:p.filter((_,j)=>j!==i));
+  const addRows=(n=3)=>setRows(p=>{const nr=[...p];for(let i=0;i<n;i++)nr.push(emptyRow());return nr});
+
+  // Auto-focus newly added rows
+  const focusLast=useCallback(()=>{setTimeout(()=>{const keys=Object.keys(nameRefs.current);if(keys.length){const last=keys[keys.length-1];nameRefs.current[last]?.focus()}},50)},[]);
+
+  // Preset toggle
+  const togglePreset=(gIdx,item)=>{
+    const key=`${gIdx}-${item}`;
+    setPresetSel(p=>{const n={...p};if(n[key])delete n[key];else n[key]=item;return n});
+  };
+  const toggleGroup=(gIdx)=>{
+    const grp=MENU_PRESETS[gIdx];
+    const allSelected=grp.items.every(it=>presetSel[`${gIdx}-${it}`]);
+    setPresetSel(p=>{const n={...p};grp.items.forEach(it=>{const key=`${gIdx}-${it}`;if(allSelected)delete n[key];else n[key]=it});return n});
+  };
+  const presetCount=Object.keys(presetSel).length;
+  const applyPresets=()=>{
+    const names=Object.values(presetSel);
+    if(!names.length)return;
+    const newRows=names.map(n=>({...emptyRow(),name:n}));
+    setRows(p=>{const filled=p.filter(r=>r.name.trim());return[...filled,...newRows,emptyRow()]});
+    setPresetSel({});setPresetOpen(false);
+  };
+
+  const validRows=rows.filter(r=>r.name.trim()&&r.price);
+  const submit=async()=>{if(!validRows.length){alert('請至少輸入一個品項（品名＋價格）');return}
+    setSaving(true);
+    const items=validRows.map(r=>({name:r.name.trim(),price:parseFloat(r.price),category:r.category,has_custom_options:r.has_custom_options,is_public:true}));
+    const ok=await onBatchSave(items);
+    if(ok){setSaved(p=>[...p,...items]);setRows([emptyRow(),emptyRow(),emptyRow()])}
+    setSaving(false);
+  };
+
+  // Quick paste: 一次貼上多行 "品名 價格"
+  const handlePaste=(e)=>{
+    const text=e.clipboardData?.getData('text');if(!text||!text.includes('\n'))return;
+    e.preventDefault();
+    const lines=text.split('\n').filter(l=>l.trim());
+    const newRows=lines.map(l=>{
+      const mt=l.match(/(.+?)\s+[NT$＄]*(\d+)/);
+      if(mt)return{...emptyRow(),name:mt[1].trim(),price:mt[2]};
+      return{...emptyRow(),name:l.trim()};
+    });
+    if(newRows.length)setRows(p=>{const filled=p.filter(r=>r.name.trim());return[...filled,...newRows,emptyRow()]});
+  };
+
+  return(<div className="space-y-4">
+    {saved.length>0&&<div className="bg-green-50 rounded-xl p-3 border border-green-200 anim-fade">
+      <p className="text-sm font-bold text-green-800 mb-1">✅ 已儲存 {saved.length} 個品項</p>
+      <div className="flex flex-wrap gap-1">{saved.map((s,i)=><span key={i} className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{s.name} ${s.price}</span>)}</div>
+    </div>}
+
+    {/* Preset selector */}
+    <div>
+      <button type="button" onClick={()=>setPresetOpen(!presetOpen)} className={`w-full text-left px-4 py-3 rounded-xl border-2 font-bold text-sm flex items-center justify-between transition ${presetOpen?'border-orange-400 bg-orange-50 text-orange-900':'border-orange-200 bg-white text-orange-700 hover:bg-orange-50'}`}>
+        <span>📋 從常見品項快速選取{presetCount>0?`（已選 ${presetCount} 項）`:''}</span>
+        <span className="text-orange-400">{presetOpen?'▲':'▼'}</span>
+      </button>
+      {presetOpen&&<div className="mt-2 bg-white rounded-xl border-2 border-orange-200 p-4 space-y-3 anim-fade max-h-[400px] overflow-y-auto">
+        {MENU_PRESETS.map((g,gi)=>{const allSel=g.items.every(it=>presetSel[`${gi}-${it}`]);return(
+          <div key={gi}>
+            <div className="flex items-center gap-2 mb-2 cursor-pointer" onClick={()=>toggleGroup(gi)}>
+              <input type="checkbox" checked={allSel} readOnly className="w-4 h-4 accent-orange-600 pointer-events-none"/>
+              <span className="font-bold text-sm text-orange-900">{g.group}</span>
+              <span className="text-xs text-gray-400">（{g.items.length}）</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5 ml-6">{g.items.map(it=>{
+              const sel=!!presetSel[`${gi}-${it}`];
+              return <button key={it} type="button" onClick={()=>togglePreset(gi,it)} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${sel?'bg-orange-500 text-white shadow':'bg-gray-100 text-gray-600 hover:bg-orange-100 hover:text-orange-800'}`}>{sel&&'✓ '}{it}</button>
+            })}</div>
+          </div>
+        )})}
+        <div className="flex items-center justify-between pt-3 border-t border-orange-100">
+          <p className="text-sm text-orange-600 font-bold">{presetCount} 項已選</p>
+          <div className="flex gap-2">
+            <button type="button" onClick={()=>{setPresetSel({});setPresetOpen(false)}} className="px-3 py-1.5 bg-gray-200 text-gray-600 rounded-lg text-xs font-bold">取消</button>
+            <button type="button" onClick={applyPresets} disabled={!presetCount} className={`px-4 py-1.5 btn-p rounded-lg text-xs font-bold shadow ${!presetCount?'opacity-40':''}`}>✅ 加入 {presetCount} 項到表格</button>
+          </div>
+        </div>
+      </div>}
+    </div>
+
+    <p className="text-xs text-gray-400">每行一個品項，可直接貼上多行文字（格式：品名 價格）自動填入</p>
+    <div className="space-y-2" onPaste={handlePaste}>
+      {/* Header */}
+      <div className="grid grid-cols-12 gap-2 px-1 text-xs font-bold text-orange-700">
+        <span className="col-span-5">品名</span><span className="col-span-2">價格</span><span className="col-span-3">分類</span><span className="col-span-1">客製</span><span className="col-span-1"></span>
+      </div>
+      {rows.map((r,i)=><div key={r._key} className="grid grid-cols-12 gap-2 items-center">
+        <input ref={el=>{if(el)nameRefs.current[r._key]=el}} type="text" value={r.name} onChange={e=>updRow(i,'name',e.target.value)} placeholder="品名" className="col-span-5 px-2.5 py-2 border-2 border-orange-200 rounded-lg text-sm focus:border-orange-500 focus:outline-none"
+          onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();if(i===rows.length-1){addRows(1);focusLast()}}}}/>
+        <input type="number" value={r.price} onChange={e=>updRow(i,'price',e.target.value)} placeholder="$" min="0" className="col-span-2 px-2.5 py-2 border-2 border-orange-200 rounded-lg text-sm focus:border-orange-500 focus:outline-none"/>
+        <select value={r.category} onChange={e=>updRow(i,'category',e.target.value)} className="col-span-3 px-2 py-2 border-2 border-orange-200 rounded-lg text-sm focus:border-orange-500 focus:outline-none">{CATS.map(c=><option key={c.k} value={c.k}>{c.s}</option>)}</select>
+        <div className="col-span-1 flex justify-center"><input type="checkbox" checked={r.has_custom_options} onChange={e=>updRow(i,'has_custom_options',e.target.checked)} className="w-4 h-4 accent-orange-600" title="甜度冰塊"/></div>
+        <button type="button" onClick={()=>rmRow(i)} className="col-span-1 text-red-300 hover:text-red-500 text-lg text-center" title="移除">×</button>
+      </div>)}
+    </div>
+
+    <div className="flex flex-wrap gap-2">
+      <button type="button" onClick={()=>{addRows(3);focusLast()}} className="px-4 py-2 bg-orange-50 text-orange-700 border-2 border-orange-200 rounded-xl font-bold text-sm hover:bg-orange-100">＋ 新增 3 行</button>
+      <button type="button" onClick={()=>{addRows(5);focusLast()}} className="px-4 py-2 bg-orange-50 text-orange-700 border-2 border-orange-200 rounded-xl font-bold text-sm hover:bg-orange-100">＋ 新增 5 行</button>
+    </div>
+
+    <div className="flex items-center justify-between pt-3 border-t border-orange-100">
+      <p className="text-sm text-orange-700 font-bold">{validRows.length} 個品項待儲存</p>
+      <div className="flex gap-2">
+        <button type="button" onClick={onClose} className="px-4 py-2.5 bg-gray-200 text-gray-600 rounded-xl font-bold text-sm">收起</button>
+        <button type="button" onClick={submit} disabled={!validRows.length||saving} className={`px-6 py-2.5 btn-g rounded-xl font-bold text-sm shadow ${(!validRows.length||saving)?'opacity-40':''}`}>{saving?'儲存中...':'✅ 全部儲存（'+validRows.length+'）'}</button>
+      </div>
+    </div>
+  </div>);
+}
+
+// ===== DRINK SHOP PICKER (紙本菜單風格品牌匯入) =====
+function DrinkShopPicker({brands,onImport,onClose,onSave,onDelete,onUploadImg}){
+  const[shop,setShop]=useState(null);
+  const[sel,setSel]=useState({});
+  const[editMode,setEditMode]=useState(false);
+  const[ed,setEd]=useState(null);  // deep-clone for editing
+  const[saving,setSaving]=useState(false);
+  const[newBrand,setNewBrand]=useState(false);
+  const[nbf,setNbf]=useState({brand:'',emoji:'🧋',sizes:'M(中杯),L(大杯)'});
+  const imgRef=useRef();
+  const selCount=Object.keys(sel).length;
+  const shopList=brands&&brands.length?brands:SEED_BRANDS;
+
+  const toggleItem=(ci,ii)=>{const k=`${ci}-${ii}`;setSel(p=>{const n={...p};if(n[k])delete n[k];else n[k]={catIdx:ci,itemIdx:ii};return n})};
+  const toggleCat=(ci)=>{const cat=(ed||shop).cats[ci];const allS=cat.items.every((_,i)=>sel[`${ci}-${i}`]);setSel(p=>{const n={...p};cat.items.forEach((_,i)=>{const k=`${ci}-${i}`;if(allS)delete n[k];else n[k]={catIdx:ci,itemIdx:i}});return n})};
+  const selectAll=()=>{const d=ed||shop;const tot=d.cats.reduce((s,c)=>s+c.items.length,0);if(selCount===tot){setSel({});return}const n={};d.cats.forEach((c,ci)=>c.items.forEach((_,ii)=>{n[`${ci}-${ii}`]={catIdx:ci,itemIdx:ii}}));setSel(n)};
+
+  const doImport=()=>{
+    const src=ed||shop;
+    const items=Object.values(sel).map(({catIdx,itemIdx})=>{
+      const it=src.cats[catIdx].items[itemIdx];
+      const sizes=src.sizes.map((label,si)=>it.p[si]!=null?{label,price:it.p[si]}:null).filter(Boolean);
+      return{name:it.n,price:sizes.length?sizes[0].price:0,category:'drink',has_custom_options:true,is_public:true,
+        sizes:sizes.length>1?sizes:null,
+        description:[it.t,it.r?'◆推薦':'',it.cf?'無咖啡因':'',it.co?'冷飲限定':''].filter(Boolean).join(' | ')||null};
+    });
+    onImport(items);
+  };
+
+  // ---- Edit helpers ----
+  const startEdit=()=>{setEditMode(true);setEd(JSON.parse(JSON.stringify(shop)))};
+  const cancelEdit=()=>{setEditMode(false);setEd(null)};
+  const updP=(ci,ii,si,v)=>{setEd(p=>{const n=JSON.parse(JSON.stringify(p));n.cats[ci].items[ii].p[si]=v===''?null:parseInt(v);return n})};
+  const updN=(ci,ii,v)=>{setEd(p=>{const n=JSON.parse(JSON.stringify(p));n.cats[ci].items[ii].n=v;return n})};
+  const updT=(ci,ii,v)=>{setEd(p=>{const n=JSON.parse(JSON.stringify(p));n.cats[ci].items[ii].t=v;return n})};
+  const updCatN=(ci,v)=>{setEd(p=>{const n=JSON.parse(JSON.stringify(p));n.cats[ci].n=v;return n})};
+  const rmItem=(ci,ii)=>{setEd(p=>{const n=JSON.parse(JSON.stringify(p));n.cats[ci].items.splice(ii,1);return n})};
+  const addItem=(ci)=>{setEd(p=>{const n=JSON.parse(JSON.stringify(p));n.cats[ci].items.push({n:'',p:n.sizes.map(()=>null),t:''});return n})};
+  const addCat=()=>{setEd(p=>{const n=JSON.parse(JSON.stringify(p));n.cats.push({n:'新分類',items:[{n:'',p:n.sizes.map(()=>null)}]});return n})};
+  const rmCat=(ci)=>{if(!confirm('確定刪除此分類？'))return;setEd(p=>{const n=JSON.parse(JSON.stringify(p));n.cats.splice(ci,1);return n})};
+
+  const saveEdit=async()=>{if(!ed||!onSave)return;setSaving(true);
+    const cleaned={...ed,cats:ed.cats.map(c=>({...c,items:c.items.filter(it=>it.n.trim())})).filter(c=>c.items.length>0)};
+    await onSave(cleaned);setSaving(false);setEditMode(false);setShop(cleaned);setEd(null);
+  };
+
+  const handleImg=async(e)=>{const file=e.target.files?.[0];if(!file||!onUploadImg)return;
+    const url=await onUploadImg(file);if(!url)return;
+    if(editMode&&ed){setEd(p=>({...p,image_url:url}))}
+    else if(shop){const u={...shop,image_url:url};if(onSave)await onSave(u);setShop(u)}
+  };
+
+  const createBrand=async()=>{if(!nbf.brand.trim()||!onSave)return;
+    const szArr=nbf.sizes.split(',').map(s=>s.trim()).filter(Boolean);
+    await onSave({brand:nbf.brand.trim(),emoji:nbf.emoji,sizes:szArr,sugars:SUGARS,ices:ICES,toppings:[],
+      cats:[{n:'飲品',items:[{n:'新品項',p:szArr.map(()=>null)}]}]});
+    setNewBrand(false);setNbf({brand:'',emoji:'🧋',sizes:'M(中杯),L(大杯)'});
+  };
+
+  const back=()=>{setShop(null);setSel({});setEditMode(false);setEd(null)};
+  const d=ed||shop; // display data
+
+  // ======== BRAND LIST ========
+  if(!shop)return(<Modal onClose={onClose} title="🧋 連鎖品牌飲料菜單" wide><div className="p-5">
+    <p className="text-sm text-gray-500 mb-4">菜單資料存放於資料庫，可直接編輯價格 / 品項 / 新增品牌，不需修改程式碼。</p>
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{shopList.map((s,i)=><div key={s._id||i} onClick={()=>setShop(s)} className="bg-white rounded-xl border-2 border-orange-100 p-4 cursor-pointer hover:border-orange-400 hover:shadow-md transition text-center group relative">
+      {s.image_url&&<img src={s.image_url} className="w-full h-20 object-cover rounded-lg mb-2 border"/>}
+      <div className="text-3xl mb-1">{s.emoji}</div>
+      <h4 className="font-bold text-orange-900 text-sm">{s.brand}</h4>
+      <p className="text-xs text-gray-400 mt-1">{s.cats.reduce((a,c)=>a+c.items.length,0)} 品項　{s.sizes.join('/')}</p>
+      {s._id&&onDelete&&<button onClick={e=>{e.stopPropagation();if(confirm(`確定刪除「${s.brand}」？`))onDelete(s._id)}} className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-100 text-red-500 rounded-full text-xs font-bold opacity-0 group-hover:opacity-100 transition flex items-center justify-center">×</button>}
+    </div>)}</div>
+    {onSave&&<div className="mt-4">{!newBrand
+      ?<button onClick={()=>setNewBrand(true)} className="w-full py-3 border-2 border-dashed border-orange-300 rounded-xl text-orange-600 font-bold hover:bg-orange-50 text-sm">➕ 新增品牌</button>
+      :<div className="bg-orange-50 rounded-xl p-4 border border-orange-200 anim-fade space-y-3">
+        <h4 className="font-bold text-orange-900 text-sm">➕ 新增品牌</h4>
+        <div className="grid sm:grid-cols-3 gap-2">
+          <input value={nbf.brand} onChange={e=>setNbf({...nbf,brand:e.target.value})} placeholder="品牌名稱 *" className="px-3 py-2 border-2 border-orange-200 rounded-lg text-sm"/>
+          <input value={nbf.emoji} onChange={e=>setNbf({...nbf,emoji:e.target.value})} placeholder="Emoji" className="px-3 py-2 border-2 border-orange-200 rounded-lg text-sm w-24"/>
+          <input value={nbf.sizes} onChange={e=>setNbf({...nbf,sizes:e.target.value})} placeholder="尺寸（逗號分隔）" className="px-3 py-2 border-2 border-orange-200 rounded-lg text-sm"/>
+        </div>
+        <div className="flex gap-2"><button onClick={createBrand} className="px-4 py-2 btn-p rounded-lg text-sm font-bold">建立</button><button onClick={()=>setNewBrand(false)} className="px-4 py-2 bg-gray-200 rounded-lg text-sm font-bold">取消</button></div>
+      </div>}
+    </div>}
+  </div></Modal>);
+
+  // ======== PAPER MENU VIEW ========
+  const totalItems=d.cats.reduce((s,c)=>s+c.items.length,0);
+  return(<Modal onClose={onClose} title={`${d.emoji} ${d.brand}`} wide><div className="flex flex-col" style={{maxHeight:'80vh'}}>
+    {/* Header bar */}
+    <div className="bg-orange-50 px-5 py-3 border-b border-orange-200 flex items-center justify-between shrink-0 flex-wrap gap-2">
+      <button onClick={back} className="text-orange-600 text-sm font-bold hover:text-orange-800">← 返回品牌</button>
+      <div className="flex items-center gap-2 flex-wrap">
+        {!editMode&&<><button onClick={selectAll} className="text-xs text-blue-600 font-bold">{selCount===totalItems?'取消全選':'全選'}</button>
+          <span className="text-sm text-orange-700 font-bold">已選 {selCount}</span></>}
+        {d._id&&onSave&&<button onClick={editMode?cancelEdit:startEdit} className={`px-3 py-1 rounded-lg text-xs font-bold ${editMode?'bg-gray-200 text-gray-600':'bg-blue-100 text-blue-700'}`}>{editMode?'✕ 取消':'✏️ 編輯菜單'}</button>}
+        {editMode&&<><input ref={imgRef} type="file" accept="image/*" className="hidden" onChange={handleImg}/><button onClick={()=>imgRef.current?.click()} className="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs font-bold">📷 上傳菜單照片</button></>}
+      </div>
+    </div>
+
+    {/* Menu photo */}
+    {d.image_url&&<div className="px-5 pt-3"><img src={d.image_url} className="w-full max-h-48 object-contain rounded-xl border-2 border-orange-100"/></div>}
+
+    {/* Scrollable menu */}
+    <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
+      {d.cats.map((cat,ci)=>{
+        const catAllSel=cat.items.every((_,i)=>sel[`${ci}-${i}`]);
+        const catSomeSel=cat.items.some((_,i)=>sel[`${ci}-${i}`]);
+        return(<div key={ci} className="anim-fade" style={{animationDelay:`${ci*30}ms`}}>
+          <div className="flex items-center gap-2 mb-2 cursor-pointer select-none" onClick={editMode?undefined:()=>toggleCat(ci)}>
+            {!editMode&&<input type="checkbox" checked={catAllSel} readOnly className="w-4 h-4 accent-orange-600 pointer-events-none" ref={el=>{if(el)el.indeterminate=catSomeSel&&!catAllSel}}/>}
+            {editMode?<><input value={cat.n} onChange={e=>updCatN(ci,e.target.value)} className="font-black text-orange-900 bg-white border-2 border-blue-200 rounded-lg px-2 py-1 text-sm flex-1"/>
+              <button onClick={()=>rmCat(ci)} className="text-xs text-red-400 font-bold ml-1">🗑</button></>
+            :<h3 className="font-black text-orange-900">{cat.n}</h3>}
+            <span className="text-xs text-gray-400">（{cat.items.length}）</span>
+          </div>
+          <div className="overflow-x-auto"><table className="w-full text-sm border-collapse"><thead><tr className="border-b-2 border-orange-200 bg-orange-50/50">
+            {!editMode&&<th className="py-1.5 px-1 w-8"></th>}
+            <th className="py-1.5 px-2 text-left text-xs text-orange-700 font-bold">品項</th>
+            {d.sizes.map((s,si)=><th key={si} className="py-1.5 px-2 text-center text-xs text-orange-700 font-bold min-w-[52px]">{s}</th>)}
+            <th className="py-1.5 px-2 text-left text-xs text-gray-400 font-bold">備註</th>
+            {editMode&&<th className="w-8"></th>}
+          </tr></thead><tbody>{cat.items.map((it,ii)=>{
+            const isSel=!!sel[`${ci}-${ii}`];
+            return(<tr key={ii} onClick={editMode?undefined:()=>toggleItem(ci,ii)} className={`border-b border-orange-50 ${editMode?'':'cursor-pointer'} transition ${isSel&&!editMode?'bg-orange-50':'hover:bg-gray-50'}`}>
+              {!editMode&&<td className="py-2 px-1 text-center"><input type="checkbox" checked={isSel} readOnly className="w-3.5 h-3.5 accent-orange-600 pointer-events-none"/></td>}
+              <td className="py-2 px-2 whitespace-nowrap">{editMode
+                ?<input value={it.n} onChange={e=>updN(ci,ii,e.target.value)} className="w-full px-2 py-1 border rounded-lg text-sm font-bold" placeholder="品名"/>
+                :<span className="font-bold text-gray-800">{it.r&&<span className="text-orange-500 mr-0.5">◆</span>}{it.n}{it.cf&&<span className="ml-1.5 text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">無咖啡因</span>}{it.co&&<span className="ml-1.5 text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">冷</span>}</span>}
+              </td>
+              {d.sizes.map((s,si)=><td key={si} className="py-2 px-2 text-center">{editMode
+                ?<input type="number" value={it.p[si]!=null?it.p[si]:''} onChange={e=>updP(ci,ii,si,e.target.value)} className="w-14 px-1 py-1 border rounded text-center text-sm" placeholder="-"/>
+                :<span className="font-bold">{it.p[si]!=null?<span className="text-orange-700">{it.p[si]}</span>:<span className="text-gray-300">-</span>}</span>}</td>)}
+              <td className="py-2 px-2 text-xs text-gray-400 max-w-[140px]">{editMode
+                ?<input value={it.t||''} onChange={e=>updT(ci,ii,e.target.value)} className="w-full px-1 py-1 border rounded text-xs" placeholder="備註"/>
+                :<span className="truncate block">{it.t||''}</span>}</td>
+              {editMode&&<td className="py-2 px-1"><button onClick={()=>rmItem(ci,ii)} className="text-red-400 hover:text-red-600 text-sm">×</button></td>}
+            </tr>);
+          })}</tbody></table></div>
+          {editMode&&<button onClick={()=>addItem(ci)} className="mt-1 text-xs text-blue-600 font-bold ml-2">＋ 新增品項</button>}
+        </div>);
+      })}
+      {editMode&&<button onClick={addCat} className="w-full py-2 border-2 border-dashed border-blue-300 rounded-xl text-blue-600 text-sm font-bold hover:bg-blue-50">＋ 新增分類</button>}
+
+      {d.toppings&&d.toppings.length>0&&<div className="bg-yellow-50 rounded-xl p-4 border border-yellow-200">
+        <h4 className="font-bold text-yellow-900 text-sm mb-2">🧊 加料選項</h4>
+        <div className="space-y-1">{d.toppings.map(([price,items],i)=><div key={i} className="flex gap-2 text-sm"><span className="font-bold text-yellow-700 shrink-0">+{price}元</span><span className="text-yellow-800">{items.join('、')}</span></div>)}</div>
+      </div>}
+      <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 text-sm"><div className="flex flex-wrap gap-4">
+        <div><span className="font-bold text-gray-600">甜度：</span><span className="text-gray-500">{d.sugars.join('、')}</span></div>
+        <div><span className="font-bold text-gray-600">冰塊：</span><span className="text-gray-500">{d.ices.join('、')}</span></div>
+      </div></div>
+    </div>
+
+    {/* Footer */}
+    <div className="bg-white border-t border-orange-200 px-5 py-3 flex items-center justify-between shrink-0 flex-wrap gap-2">
+      {editMode?(<>
+        <p className="text-sm text-blue-700 font-bold">📝 編輯模式 — 直接修改價格、品項</p>
+        <div className="flex gap-2">
+          <button onClick={cancelEdit} className="px-4 py-2.5 bg-gray-200 text-gray-600 rounded-xl font-bold text-sm">取消</button>
+          <button onClick={saveEdit} disabled={saving} className={`px-6 py-2.5 btn-b rounded-xl font-bold text-sm shadow ${saving?'opacity-50':''}`}>{saving?'儲存中...':'💾 儲存到資料庫'}</button>
+        </div>
+      </>):(<>
+        <p className="text-sm text-orange-700"><strong>{selCount}</strong> 個品項已選取</p>
+        <div className="flex gap-2">
+          <button onClick={onClose} className="px-4 py-2.5 bg-gray-200 text-gray-600 rounded-xl font-bold text-sm">取消</button>
+          <button onClick={doImport} disabled={!selCount} className={`px-6 py-2.5 btn-g rounded-xl font-bold text-sm shadow ${!selCount?'opacity-40':''}`}>✅ 匯入 {selCount} 項</button>
+        </div>
+      </>)}
+    </div>
+  </div></Modal>);
+}
+
+// ===== MENU LIST =====
+function MenuList({items,onEdit,onDelete,compact}){
+  if(!items.length)return(<div className="text-center py-12 text-gray-400 anim-fade"><p className="text-4xl mb-2">📋</p><p>尚無品項</p></div>);
+  return(<div className={`grid ${compact?'grid-cols-1':'sm:grid-cols-2 lg:grid-cols-3'} gap-3`}>{items.map((it,i)=>(<div key={it.id} className="bg-white rounded-xl shadow-sm p-3.5 border border-orange-50 anim-fade flex gap-3 group" style={{animationDelay:`${Math.min(i,8)*30}ms`}}>
+    <div className="flex-1 min-w-0">
+      <div className="flex justify-between items-start"><h4 className="font-bold text-orange-900 truncate text-sm">{it.name}</h4>
+        {it.sizes?<span className="text-orange-600 font-bold shrink-0 ml-2 text-xs">NT${it.sizes.map(s=>s.price).join('/')}</span>
+        :<span className="text-orange-600 font-bold shrink-0 ml-2 text-sm">NT${it.price}</span>}
+      </div>
+      {it.sizes&&<div className="flex gap-1 mt-1 flex-wrap">{it.sizes.map((s,j)=><span key={j} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{s.label} ${s.price}</span>)}</div>}
+      <div className="flex items-center gap-2 mt-1.5"><span className="text-xs px-2 py-0.5 rounded-full bg-orange-50 text-orange-600">{catL(it.category)}</span>
+        {it.has_custom_options&&<span className="text-xs text-purple-600">☕客製</span>}
+        {!it.is_public&&<span className="text-xs text-yellow-600">🔒</span>}
+      </div>
+      {onEdit&&<div className="flex gap-2 mt-2 opacity-0 group-hover:opacity-100 transition"><button onClick={()=>onEdit(it)} className="text-xs text-blue-500 font-bold">✏️</button><button onClick={()=>onDelete(it.id)} className="text-xs text-red-400 font-bold">🗑</button></div>}
+    </div></div>))}</div>);
+}
+
+// ============================================================
+// ===== MAIN APP =====
+// ============================================================
+function GroupBuyApp(){
+  const[view,setView]=useState('home');
+  const[user,setUser]=useState(null);const[isGuest,setIsGuest]=useState(false);const[guestName,setGuestName]=useState('');
+  const[gbs,setGbs]=useState([]);const[merchants,setMerchants]=useState([]);const[allMenus,setAllMenus]=useState([]);
+  const[brandTpls,setBrandTpls]=useState([]);
+  const[sel,setSel]=useState(null);const[selM,setSelM]=useState(null);
+  const[toast,setToast]=useState(null);const[shareModal,setShareModal]=useState(null);const[loading,setLoading]=useState(true);
+  const show=(m,t='success')=>setToast({message:m,type:t});
+  const cName=()=>{if(isGuest)return guestName;if(user)return user.user_metadata?.full_name||user.email;return''};
+  const loggedIn=user||isGuest;
+
+  useEffect(()=>{sb.auth.getSession().then(({data:{session:s}})=>setUser(s?.user??null));const{data:{subscription:sub}}=sb.auth.onAuthStateChange((_,s)=>setUser(s?.user??null));return()=>sub.unsubscribe()},[]);
+  const ldGbs=useCallback(async()=>{setLoading(true);const{data}=await sb.from('group_buys').select('*').order('created_at',{ascending:false});if(data)setGbs(data);setLoading(false)},[]);
+  const ldM=useCallback(async()=>{const{data}=await sb.from('merchants').select('*').order('created_at',{ascending:false});if(data)setMerchants(data)},[]);
+  const ldMenus=useCallback(async()=>{const{data}=await sb.from('menus').select('*').order('category').order('name');if(data)setAllMenus(data)},[]);
+
+  // 品牌範本：從 DB 讀取，若空則自動從種子資料匯入
+  const ldBrands=useCallback(async()=>{
+    const{data,error}=await sb.from('brand_templates').select('*').order('brand');
+    if(error){setBrandTpls(SEED_BRANDS);return}
+    if(data&&data.length>0){
+      setBrandTpls(data.map(d=>({...d.config,brand:d.brand,emoji:d.emoji,_id:d.id,image_url:d.image_url})));
+    }else{
+      const ins=SEED_BRANDS.map(s=>({brand:s.brand,emoji:s.emoji,config:{sizes:s.sizes,sugars:s.sugars,ices:s.ices,toppings:s.toppings,cats:s.cats}}));
+      const{error:e2}=await sb.from('brand_templates').insert(ins);
+      if(!e2){const{data:d2}=await sb.from('brand_templates').select('*').order('brand');if(d2)setBrandTpls(d2.map(d=>({...d.config,brand:d.brand,emoji:d.emoji,_id:d.id,image_url:d.image_url})))}
+      else setBrandTpls(SEED_BRANDS);
+    }
+  },[]);
+
+  const saveBrandTpl=async(brand)=>{
+    const{_id,brand:name,emoji,image_url,...rest}=brand;
+    const config={sizes:rest.sizes,sugars:rest.sugars,ices:rest.ices,toppings:rest.toppings,cats:rest.cats};
+    if(_id){await sb.from('brand_templates').update({brand:name,emoji,config,image_url}).eq('id',_id)}
+    else{await sb.from('brand_templates').insert([{brand:name,emoji,config}])}
+    ldBrands();
+  };
+  const delBrandTpl=async(id)=>{await sb.from('brand_templates').delete().eq('id',id);ldBrands()};
+
+  // 圖片上傳
+  const uploadImg=async(file)=>{
+    const ext=file.name.split('.').pop();const fn=`brand-${Date.now()}.${ext}`;
+    const{error}=await sb.storage.from('menu-images').upload(fn,file,{upsert:true});
+    if(error){show('圖片上傳失敗','error');return null}
+    return sb.storage.from('menu-images').getPublicUrl(fn).data.publicUrl;
+  };
+
+  useEffect(()=>{ldGbs();ldM();ldMenus();ldBrands()},[]);
+
+  // URL code handler - direct link to ordering
+  useEffect(()=>{const c=new URLSearchParams(location.search).get('code');if(c){sb.from('group_buys').select('*').eq('code',c.trim()).single().then(({data})=>{if(data){if(data.password){const p=prompt('此團購需要密碼：');if(p===data.password){setSel(data);setView('detail')}else if(p!==null)show('密碼錯誤','error')}else{setSel(data);setView('detail')}}else show('找不到此代碼','error');history.replaceState({},'',location.pathname)})}},[]);
+
+  const gLogin=async()=>{const{error}=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}});if(error)show('登入失敗','error')};
+  const gOut=async()=>{await sb.auth.signOut();setIsGuest(false);setGuestName('');setView('home')};
+  const goHome=()=>{setView('home');setSel(null);setSelM(null)};
+
+  const parseOcr=(text,mid)=>{
+    const lines=text.split('\n').filter(l=>l.trim());const items=[];
+    lines.forEach(l=>{
+      // Try multiple patterns
+      let mt=l.match(/(.+?)\s+[NT$＄]*(\d+)/);
+      if(!mt)mt=l.match(/(.+?)[\s\t]+(\d+)/);
+      if(mt&&mt[1].trim().length>0)items.push({name:mt[1].trim().replace(/[\.\-\s]+$/,''),price:parseInt(mt[2])});
+      else if(l.trim().length>1&&!/^\d+$/.test(l.trim()))items.push({name:l.trim(),price:0});
+    });
+    if(!items.length){show('無法解析，請手動輸入','warning');return}
+    const ins=items.map(it=>({name:it.name,price:it.price,category:'main',merchant_id:mid||null,is_public:true,created_by:user?.id||null}));
+    sb.from('menus').insert(ins).then(({error})=>{if(!error){show(`已新增 ${items.length} 個品項`);ldMenus()}else show('批次新增失敗','error')});
+  };
+
+  // NavBar
+  const Nav=()=>(<header className="bg-white/95 backdrop-blur-md border-b border-orange-100 sticky top-0 z-40"><div className="max-w-6xl mx-auto px-4 py-2.5 flex justify-between items-center">
+    <h1 className="text-xl font-black text-orange-900 cursor-pointer flex items-center gap-1.5" onClick={goHome}><span className="text-2xl">🍱</span>團購GO</h1>
+    <div className="flex gap-2 items-center">{loggedIn?(<><span className="text-sm text-orange-700 hidden sm:inline max-w-[120px] truncate">{isGuest?'👤':'🔒'} {cName()}</span><button onClick={gOut} className="px-3 py-1.5 text-orange-600 hover:bg-orange-50 rounded-lg text-sm">登出</button></>):(<button onClick={()=>setView('login')} className="px-4 py-1.5 btn-p rounded-lg font-bold text-sm">登入</button>)}</div>
+  </div></header>);
+
+  // ===== HOME =====
+  const Home=()=>{
+    const[jc,setJc]=useState('');const[jp,setJp]=useState('');const[spwd,setSpwd]=useState(false);const[jt,setJt]=useState(null);
+    const doJoin=async()=>{if(!jc.trim())return;const{data}=await sb.from('group_buys').select('*').eq('code',jc.trim()).single();if(data){if(data.password){setJt(data);setSpwd(true)}else{setSel(data);setView('detail');setJc('')}}else show('找不到此代碼','error')};
+    const okPwd=()=>{if(jt&&jp===jt.password){setSel(jt);setView('detail');setJc('');setJp('');setSpwd(false);setJt(null)}else show('密碼錯誤','error')};
+
+    const cards=[
+      {icon:'🛒',title:'發起團購',desc:'建立新團購邀請同事加入',clr:'from-orange-500 to-red-500',fn:()=>loggedIn?setView('create'):setView('login')},
+      {icon:'🏪',title:'商家菜單管理',desc:'管理商家資訊與菜單品項',clr:'from-blue-500 to-indigo-500',fn:()=>setView('merchants')},
+      {icon:'📊',title:'所有團購',desc:'查看進行中與歷史團購',clr:'from-purple-500 to-pink-500',fn:()=>document.getElementById('glist')?.scrollIntoView({behavior:'smooth'})},
+    ];
+
+    return(<div className="min-h-screen bg-pattern"><Nav/>
+      <main className="max-w-6xl mx-auto px-4 py-6">
+        <div className="grid grid-cols-3 gap-3 mb-6 card-grid">{cards.map((c,i)=>(<div key={i} onClick={c.fn} className="dash-card bg-white rounded-2xl shadow-md overflow-hidden anim-fade" style={{animationDelay:`${i*60}ms`}}><div className={`bg-gradient-to-br ${c.clr} p-4 text-white`}><div className="text-3xl mb-1">{c.icon}</div><h3 className="text-sm sm:text-base font-bold leading-tight">{c.title}</h3></div><div className="p-3"><p className="text-xs text-gray-500 hidden sm:block">{c.desc}</p></div></div>))}</div>
+
+        <div className="bg-white rounded-2xl shadow-md p-5 mb-6 border border-orange-100 anim-fade" style={{animationDelay:'200ms'}}>
+          <p className="text-orange-900 font-bold mb-2">🔑 用代碼加入團購</p>
+          <div className="flex gap-2"><input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="輸入6碼數字" value={jc} onChange={e=>setJc(e.target.value.replace(/\D/g,'').slice(0,6))} onKeyDown={e=>e.key==='Enter'&&doJoin()} className="flex-1 px-4 py-3 border-2 border-orange-200 rounded-xl focus:border-orange-400 focus:outline-none font-mono tracking-[.3em] text-center text-xl" maxLength={6}/><button onClick={doJoin} className="px-5 py-3 btn-p rounded-xl font-bold">加入</button></div>
+          {spwd&&<div className="mt-2 flex gap-2 anim-fade"><input type="password" placeholder="輸入密碼" value={jp} onChange={e=>setJp(e.target.value)} onKeyDown={e=>e.key==='Enter'&&okPwd()} className="flex-1 px-4 py-3 border-2 border-yellow-300 rounded-xl text-center"/><button onClick={okPwd} className="px-5 py-3 bg-yellow-500 text-white rounded-xl font-bold">確認</button></div>}
+        </div>
+
+        <div id="glist" className="flex items-center justify-between mb-4"><h2 className="text-lg font-bold text-orange-900">📦 目前團購</h2><button onClick={ldGbs} className="text-sm text-orange-500 hover:text-orange-700">🔄 重整</button></div>
+        {loading?<div className="text-center py-16 text-orange-400"><div className="spinner mx-auto mb-3"></div>載入中...</div>:gbs.length===0?<div className="text-center py-16 anim-fade"><div className="text-5xl mb-3">🍱</div><p className="text-orange-600 font-medium">目前沒有團購</p></div>
+        :<div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">{gbs.map((g,i)=>{const a=isAct(g.end_date);return(<div key={g.id} className="bg-white rounded-2xl shadow-sm card-hover cursor-pointer p-4 border border-orange-50 anim-fade" style={{animationDelay:`${Math.min(i,6)*50}ms`}} onClick={()=>{if(g.password){const p=prompt('請輸入密碼：');if(p===g.password){setSel(g);setView('detail')}else if(p!==null)show('密碼錯誤','error')}else{setSel(g);setView('detail')}}}>
+          <div className="flex justify-between items-start mb-2"><h3 className="font-bold text-orange-900 leading-tight">{g.title}</h3><span className={`px-2 py-0.5 rounded-full text-xs font-bold shrink-0 ml-2 ${a?'bg-green-100 text-green-700':'bg-gray-100 text-gray-500'}`}>{a?'進行中':'已結束'}</span></div>
+          <div className="space-y-1 text-sm text-orange-700"><p>🏪 {g.shop_name}</p><p>📅 截止 {fmtD(g.end_date)}</p><p>👤 {g.organizer_name}</p></div>
+          <div className="mt-2 pt-2 border-t border-orange-50 flex justify-between items-center"><span className="text-xs font-mono text-orange-400">#{g.code}</span>{g.password&&<span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">🔒</span>}</div>
+        </div>)})}</div>}
+      </main>
+    </div>);
+  };
+
+  // ===== LOGIN =====
+  const Login=()=>{const[n,setN]=useState(guestName);const go=()=>{if(n.trim()){setGuestName(n.trim());setIsGuest(true);setView('home')}else show('請輸入姓名','error')};
+    return(<div className="min-h-screen bg-pattern flex items-center justify-center p-4"><div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full border border-orange-100 anim-pop"><div className="text-center mb-6"><div className="text-5xl mb-2">🍱</div><h2 className="text-2xl font-black text-orange-900">歡迎使用團購GO</h2><p className="text-orange-500 mt-1 text-sm">選擇登入方式</p></div><div className="space-y-3">
+      <button onClick={gLogin} className="w-full py-3 px-4 bg-white border-2 border-gray-200 rounded-xl font-medium text-gray-700 hover:bg-gray-50 flex items-center justify-center gap-3"><svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>Google 登入</button>
+      <div className="relative my-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div><div className="relative flex justify-center"><span className="px-3 bg-white text-gray-400 text-sm">或以訪客進入</span></div></div>
+      <input type="text" value={n} onChange={e=>setN(e.target.value)} placeholder="輸入姓名" maxLength={20} className="w-full px-4 py-3 border-2 border-orange-200 rounded-xl text-center text-lg" onKeyDown={e=>e.key==='Enter'&&go()}/>
+      <button onClick={go} className="w-full py-3 btn-p rounded-xl font-bold text-lg shadow-lg">以訪客身份進入</button>
+      <p className="text-xs text-gray-400 text-center">＊訪客無法使用「我的最愛」</p>
+      <button onClick={()=>setView('home')} className="w-full py-2 text-orange-500 text-sm">← 返回首頁</button>
+    </div></div></div>);
+  };
+
+  // ===== MERCHANTS + MENUS (合併管理) =====
+  const MerchantsPage=()=>{
+    const[sf,setSf]=useState(false);const[em,setEm]=useState(null);const[f,setF]=useState({name:'',description:'',phone:'',address:'',city:'',district:''});
+    const[activeM,setActiveM]=useState(null);const[mm,setMm]=useState([]);const[tab,setTab]=useState('all');
+    const[menuSf,setMenuSf]=useState(false);const[menuEd,setMenuEd]=useState(null);const[ocr,setOcr]=useState(false);const[brandPicker,setBrandPicker]=useState(false);
+    const[copyFrom,setCopyFrom]=useState(null);const[copyTo,setCopyTo]=useState('');
+    const[filterCity,setFilterCity]=useState('');
+
+    const reset=()=>{setF({name:'',description:'',phone:'',address:'',city:'',district:''});setEm(null);setSf(false)};
+    const composeAddr=(city,district,street)=>`${city}${district}${street?(' '+street).trimStart():''}`.trim();
+    const save=async(e)=>{e.preventDefault();if(!f.name.trim())return;
+      const fullAddr=composeAddr(f.city,f.district,f.address);
+      if(em){await sb.from('merchants').update({name:f.name,description:f.description,phone:f.phone,address:fullAddr}).eq('id',em);show('已更新')}
+      else{const{error}=await sb.from('merchants').insert([{name:f.name,description:f.description,phone:f.phone,address:fullAddr,owner_id:user?.id||null,is_public:true}]);if(error)show('失敗','error');else show('商家已建立')}
+      reset();ldM()};
+    const del=async(id)=>{if(!confirm('確定刪除？菜單也會一併刪除'))return;await sb.from('merchants').delete().eq('id',id);show('已刪除');ldM();ldMenus();if(activeM===id)setActiveM(null)};
+    const mCnt=(mid)=>allMenus.filter(x=>x.merchant_id===mid).length;
+
+    // Load menus for active merchant
+    useEffect(()=>{if(activeM){const items=allMenus.filter(x=>x.merchant_id===activeM);setMm(items)}else setMm([])},[activeM,allMenus]);
+    const filtered=tab==='all'?mm:mm.filter(x=>x.category===tab);
+
+    const saveItem=async(item)=>{const p={...item,merchant_id:activeM,created_by:user?.id||null};
+      if(menuEd){await sb.from('menus').update(p).eq('id',menuEd);show('已更新');setMenuEd(null);setMenuSf(false);ldMenus()}
+      else{const{error}=await sb.from('menus').insert([p]);if(error){show('失敗','error')}else{show('已新增');ldMenus()}}
+    };
+    const batchSaveItems=async(items)=>{
+      const ins=items.map(it=>({...it,merchant_id:activeM,created_by:user?.id||null}));
+      const{error}=await sb.from('menus').insert(ins);
+      if(error){show('批次新增失敗','error');return false}
+      show(`✅ 已新增 ${items.length} 個品項`);ldMenus();return true;
+    };
+    const delItem=async(id)=>{if(!confirm('確定刪除？'))return;await sb.from('menus').delete().eq('id',id);show('已刪除');ldMenus()};
+
+    // Copy menu from one merchant to another
+    const doCopy=async()=>{if(!copyFrom||!copyTo)return;
+      const srcItems=allMenus.filter(x=>x.merchant_id===copyFrom);
+      if(!srcItems.length){show('來源商家沒有菜單','warning');return}
+      const ins=srcItems.map(it=>({name:it.name,price:it.price,category:it.category,description:it.description,sizes:it.sizes,has_custom_options:it.has_custom_options,merchant_id:copyTo,is_public:it.is_public,created_by:user?.id||null}));
+      const{error}=await sb.from('menus').insert(ins);
+      if(error)show('複製失敗','error');else{show(`已複製 ${ins.length} 個品項`);ldMenus()}
+      setCopyFrom(null);setCopyTo('');
+    };
+
+    const actMerchant=merchants.find(m=>m.id===activeM);
+
+    return(<div className="min-h-screen bg-pattern"><Nav/>
+      <main className="max-w-6xl mx-auto px-4 py-6">
+        <button onClick={goHome} className="text-orange-600 hover:text-orange-800 mb-3 inline-block text-sm">← 返回首頁</button>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+          <h2 className="text-xl font-black text-orange-900">🏪 商家菜單管理</h2>
+          <div className="flex gap-2">
+            <button onClick={()=>{setSf(!sf);setEm(null);setF({name:'',description:'',phone:'',address:'',city:'',district:''})}} className="px-4 py-2 btn-p rounded-xl font-bold text-sm">{sf?'✕ 收起':'➕ 新增商家'}</button>
+            <button onClick={()=>setCopyFrom(copyFrom?null:'pick')} className="px-4 py-2 btn-b rounded-xl font-bold text-sm">📋 複製菜單</button>
+          </div>
+        </div>
+
+        {/* Copy menu panel */}
+        {copyFrom&&<div className="bg-blue-50 rounded-2xl p-5 border border-blue-200 mb-5 anim-slide">
+          <h3 className="font-bold text-blue-900 mb-3">📋 複製菜單到其他商家</h3>
+          <div className="grid sm:grid-cols-3 gap-3 items-end">
+            <div><label className="block text-sm font-bold text-blue-800 mb-1">從（來源商家）</label>
+              <select value={copyFrom==='pick'?'':copyFrom} onChange={e=>setCopyFrom(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl">
+                <option value="">選擇來源...</option>{merchants.map(m=><option key={m.id} value={m.id}>{m.name}（{mCnt(m.id)}品項）</option>)}
+              </select></div>
+            <div><label className="block text-sm font-bold text-blue-800 mb-1">到（目標商家）</label>
+              <select value={copyTo} onChange={e=>setCopyTo(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl">
+                <option value="">選擇目標...</option>{merchants.filter(m=>m.id!==copyFrom).map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
+              </select></div>
+            <button onClick={doCopy} disabled={!copyFrom||copyFrom==='pick'||!copyTo} className="px-5 py-2.5 btn-g rounded-xl font-bold text-sm disabled:opacity-40">執行複製</button>
+          </div>
+          <p className="text-xs text-blue-600 mt-2">＊同品名的飲料/主餐可以一次複製到不同分店</p>
+        </div>}
+
+        {/* New merchant form */}
+        {sf&&<div className="bg-white rounded-2xl shadow-md p-5 border border-orange-100 mb-5 anim-slide">
+          <h3 className="font-bold text-orange-900 mb-3">{em?'✏️ 編輯商家':'➕ 新增商家'}</h3>
+          <form onSubmit={save} className="space-y-3">
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div><label className="block text-sm font-bold text-orange-900 mb-1">名稱 *</label><input type="text" required value={f.name} onChange={e=>setF({...f,name:e.target.value})} placeholder="王記便當" className="w-full px-3 py-2.5 border-2 border-orange-200 rounded-xl focus:border-orange-500 focus:outline-none"/></div>
+              <div><label className="block text-sm font-bold text-orange-900 mb-1">電話</label><input type="text" value={f.phone} onChange={e=>setF({...f,phone:e.target.value})} className="w-full px-3 py-2.5 border-2 border-orange-200 rounded-xl focus:border-orange-500 focus:outline-none"/></div>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div><label className="block text-sm font-bold text-orange-900 mb-1">縣市</label><select value={f.city} onChange={e=>setF({...f,city:e.target.value,district:''})} className="w-full px-3 py-2.5 border-2 border-orange-200 rounded-xl focus:border-orange-500 focus:outline-none"><option value="">-- 選擇縣市 --</option>{TW_CITIES.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
+              <div><label className="block text-sm font-bold text-orange-900 mb-1">鄉鎮市區</label><select value={f.district} onChange={e=>setF({...f,district:e.target.value})} disabled={!f.city} className="w-full px-3 py-2.5 border-2 border-orange-200 rounded-xl focus:border-orange-500 focus:outline-none disabled:bg-gray-100"><option value="">-- 選擇區域 --</option>{(TW_REGIONS[f.city]||[]).map(d=><option key={d} value={d}>{d}</option>)}</select></div>
+            </div>
+            <div><label className="block text-sm font-bold text-orange-900 mb-1">詳細地址</label><input type="text" value={f.address} onChange={e=>setF({...f,address:e.target.value})} placeholder="路/街/巷/號" className="w-full px-3 py-2.5 border-2 border-orange-200 rounded-xl focus:border-orange-500 focus:outline-none"/></div>
+            <div><label className="block text-sm font-bold text-orange-900 mb-1">說明</label><textarea value={f.description} onChange={e=>setF({...f,description:e.target.value})} rows={2} className="w-full px-3 py-2.5 border-2 border-orange-200 rounded-xl resize-none focus:border-orange-500 focus:outline-none"/></div>
+            <div className="flex gap-2"><button type="submit" className="px-5 py-2.5 btn-p rounded-xl font-bold">{em?'💾 儲存':'➕ 建立'}</button><button type="button" onClick={reset} className="px-5 py-2.5 bg-gray-200 text-gray-600 rounded-xl font-bold">取消</button></div>
+          </form>
+        </div>}
+
+        <div className="grid lg:grid-cols-3 gap-5">
+          {/* Merchant list (left) */}
+          <div className="lg:col-span-1">
+            <p className="text-sm font-bold text-gray-500 mb-2">商家列表（{merchants.length}）</p>
+            <div className="mb-2"><select value={filterCity} onChange={e=>setFilterCity(e.target.value)} className="w-full px-3 py-2 border-2 border-orange-200 rounded-xl text-sm focus:border-orange-500 focus:outline-none"><option value="">📍 全部縣市</option>{TW_CITIES.filter(c=>merchants.some(m=>m.address&&m.address.startsWith(c))).map(c=><option key={c} value={c}>{c}</option>)}<option value="__none">（未設定地區）</option></select></div>
+            <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
+              {merchants.filter(m=>{if(!filterCity)return true;if(filterCity==='__none')return!m.address||!TW_CITIES.some(c=>m.address.startsWith(c));return m.address&&m.address.startsWith(filterCity)}).map(m=>{const loc=parseCityDist(m.address);return(<div key={m.id} onClick={()=>setActiveM(m.id)} className={`m-card bg-white rounded-xl shadow-sm p-3.5 cursor-pointer ${activeM===m.id?'border-orange-400 bg-orange-50':''}`}>
+                <div className="flex justify-between items-start">
+                  <div className="min-w-0"><h3 className="font-bold text-orange-900 truncate">{m.name}</h3>{loc.city&&<p className="text-xs text-blue-600 mt-0.5">📍 {loc.city}{loc.district}</p>}{m.phone&&<p className="text-xs text-gray-400">📞 {m.phone}</p>}</div>
+                  <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full shrink-0">{mCnt(m.id)}</span>
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <button onClick={e=>{e.stopPropagation();setEm(m.id);const p=parseCityDist(m.address);setF({name:m.name,description:m.description||'',phone:m.phone||'',address:p.street,city:p.city,district:p.district});setSf(true);scrollTo({top:0,behavior:'smooth'})}} className="text-xs text-blue-500 font-bold">✏️</button>
+                  <button onClick={e=>{e.stopPropagation();del(m.id)}} className="text-xs text-red-400 font-bold">🗑</button>
+                </div>
+              </div>)})}
+              {merchants.length===0&&<div className="text-center py-8 text-gray-400"><p className="text-3xl mb-2">🏪</p><p className="text-sm">尚未建立商家</p></div>}
+            </div>
+          </div>
+
+          {/* Menu management (right) */}
+          <div className="lg:col-span-2">
+            {activeM&&actMerchant?(<div className="anim-fade">
+              <div className="bg-white rounded-2xl shadow-md p-4 border border-blue-100 mb-4">
+                <div className="flex justify-between items-center">
+                  <div><h3 className="text-lg font-bold text-blue-900">🏪 {actMerchant.name} 的菜單</h3>
+                    <p className="text-sm text-gray-400 mt-0.5">{(()=>{const l=parseCityDist(actMerchant.address);return l.city?`📍 ${l.city}${l.district} ・ `:''})()}{mm.length} 品項</p></div>
+                  <div className="flex gap-2">
+                    <button onClick={()=>{setMenuSf(!menuSf);setMenuEd(null)}} className="px-3 py-1.5 btn-p rounded-lg font-bold text-xs">{menuSf&&!menuEd?'✕':'➕ 批次新增'}</button>
+                    <button onClick={()=>setBrandPicker(true)} className="px-3 py-1.5 btn-g rounded-lg font-bold text-xs">🧋 品牌匯入</button>
+                    <button onClick={()=>setOcr(true)} className="px-3 py-1.5 btn-b rounded-lg font-bold text-xs">📸 OCR</button>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-1.5 mb-3 flex-wrap"><span onClick={()=>setTab('all')} className={`cpill ${tab==='all'?'cpill-a':'cpill-i'}`}>全部</span>{CATS.map(c=><span key={c.k} onClick={()=>setTab(c.k)} className={`cpill ${tab===c.k?'cpill-a':'cpill-i'}`}>{c.s}</span>)}</div>
+              {menuEd&&<div className="bg-white rounded-2xl shadow-md p-5 border border-orange-100 mb-4 anim-slide"><h3 className="font-bold text-orange-900 mb-3">✏️ 編輯品項</h3><MenuItemForm onSave={saveItem} editData={mm.find(x=>x.id===menuEd)} onCancel={()=>{setMenuEd(null);setMenuSf(false)}}/></div>}
+              {menuSf&&!menuEd&&<div className="bg-white rounded-2xl shadow-md p-5 border border-orange-100 mb-4 anim-slide"><h3 className="font-bold text-orange-900 mb-3">➕ 批次新增品項</h3><BatchMenuForm onBatchSave={batchSaveItems} onClose={()=>setMenuSf(false)}/></div>}
+              <MenuList items={filtered} onEdit={(it)=>{setMenuEd(it.id);setMenuSf(true)}} onDelete={delItem}/>
+              {ocr&&<OcrScanner onResult={(t)=>{setOcr(false);parseOcr(t,activeM)}} onClose={()=>setOcr(false)} merchantName={actMerchant.name}/>}
+              {brandPicker&&<DrinkShopPicker brands={brandTpls} onImport={async(items)=>{const ok=await batchSaveItems(items);if(ok)setBrandPicker(false)}} onClose={()=>setBrandPicker(false)} onSave={saveBrandTpl} onDelete={delBrandTpl} onUploadImg={uploadImg}/>}
+            </div>)
+            :(<div className="flex items-center justify-center h-64 text-gray-400"><div className="text-center"><p className="text-4xl mb-2">👈</p><p>選擇左側商家來管理菜單</p></div></div>)}
+          </div>
+        </div>
+      </main>
+    </div>);
+  };
+
+  // ===== CREATE GROUP BUY (with quick actions) =====
+  const Create=()=>{
+    const dayLabel=(n)=>{if(n===0)return'今日';if(n===1)return'明日';if(n===2)return'後天';return`${n}天後`};
+    const fmtShortDate=(n)=>{const d=new Date(Date.now()+n*864e5);return`${d.getMonth()+1}/${d.getDate()}（${'日一二三四五六'[d.getDay()]}）`};
+    const quickActions=[
+      {label:`🍱 今日午餐 ${fmtShortDate(0)}`,title:`${dayLabel(0)}午餐團購 ${fmtShortDate(0)}`,date:todayS()},
+      {label:`🍱 明日午餐 ${fmtShortDate(1)}`,title:`${dayLabel(1)}午餐團購 ${fmtShortDate(1)}`,date:addDays(1)},
+      {label:`🍱 後天午餐 ${fmtShortDate(2)}`,title:`${dayLabel(2)}午餐團購 ${fmtShortDate(2)}`,date:addDays(2)},
+    ];
+    const[f,setF]=useState({title:'',shopName:'',endDate:'',desc:'',priv:false,pwd:'',mid:''});const[sub,setSub]=useState(false);const[mm,setMm]=useState([]);const[mt,setMt]=useState('all');
+    useEffect(()=>{if(f.mid){const m=merchants.find(x=>x.id===f.mid);if(m)setF(p=>({...p,shopName:m.name}));sb.from('menus').select('*').eq('merchant_id',f.mid).order('category').order('name').then(({data})=>{if(data)setMm(data)})}else setMm([])},[f.mid]);
+    const fmm=mt==='all'?mm:mm.filter(x=>x.category===mt);
+
+    const go=async(e)=>{e.preventDefault();if(sub)return;setSub(true);
+      const code=genCode();
+      const{data,error}=await sb.from('group_buys').insert([{title:f.title,shop_name:f.shopName,end_date:f.endDate,is_private:f.priv,description:f.desc||null,password:f.priv&&f.pwd?f.pwd:null,code,organizer_name:cName(),organizer_id:user?.id||null}]).select().single();
+      if(error)show('失敗: '+error.message,'error');else{setShareModal(data);ldGbs()}setSub(false)};
+
+    const applyQuick=(q)=>{setF(p=>({...p,title:q.title,endDate:q.date}))};
+
+    return(<div className="min-h-screen bg-pattern"><Nav/>
+      <main className="max-w-4xl mx-auto px-4 py-6">
+        <button onClick={goHome} className="text-orange-600 hover:text-orange-800 mb-3 inline-block text-sm">← 返回首頁</button>
+        <h2 className="text-xl font-black text-orange-900 mb-4">🛒 發起新團購</h2>
+
+        {/* Quick action chips */}
+        <div className="flex flex-wrap gap-2 mb-5">
+          <span className="text-sm text-gray-500 py-2">快速建立：</span>
+          {quickActions.map((q,i)=><button key={i} onClick={()=>applyQuick(q)} className="quick-chip text-sm">{q.label}</button>)}
+        </div>
+
+        <div className="grid lg:grid-cols-5 gap-5">
+          <div className="lg:col-span-3"><div className="bg-white rounded-2xl shadow-md p-5 border border-orange-100 anim-slide"><form onSubmit={go} className="space-y-4">
+            <div><label className="block text-sm font-bold text-orange-900 mb-1">團購名稱 *</label><input type="text" required value={f.title} onChange={e=>setF({...f,title:e.target.value})} placeholder="週五午餐便當" maxLength={100} className="w-full px-3 py-2.5 border-2 border-orange-200 rounded-xl focus:border-orange-500 focus:outline-none"/></div>
+            <div><label className="block text-sm font-bold text-orange-900 mb-1">商家 *</label>
+              <select value={f.mid} onChange={e=>setF({...f,mid:e.target.value})} className="w-full px-3 py-2.5 border-2 border-orange-200 rounded-xl mb-2"><option value="">-- 選擇已有商家或下方輸入 --</option>{merchants.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select>
+              <input type="text" required value={f.shopName} onChange={e=>setF({...f,shopName:e.target.value,mid:''})} placeholder="或直接輸入商家名稱" maxLength={100} className="w-full px-3 py-2.5 border-2 border-orange-200 rounded-xl focus:border-orange-500 focus:outline-none"/></div>
+            <div><label className="block text-sm font-bold text-orange-900 mb-1">截止日期 *</label><input type="date" required value={f.endDate} onChange={e=>setF({...f,endDate:e.target.value})} min={todayS()} max={maxDS()} className="w-full px-3 py-2.5 border-2 border-orange-200 rounded-xl"/><p className="text-xs text-orange-400 mt-1">最短今天，最長14天</p></div>
+            <div><label className="block text-sm font-bold text-orange-900 mb-1">說明</label><textarea value={f.desc} onChange={e=>setF({...f,desc:e.target.value})} rows={2} maxLength={500} className="w-full px-3 py-2.5 border-2 border-orange-200 rounded-xl resize-none"/></div>
+            <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl hover:bg-orange-50"><input type="checkbox" checked={f.priv} onChange={e=>setF({...f,priv:e.target.checked})} className="w-4 h-4 rounded accent-orange-600"/><div><span className="text-orange-900 font-medium text-sm">🔒 私人團購（需密碼）</span></div></label>
+            {f.priv&&<div className="anim-fade"><input type="text" value={f.pwd} onChange={e=>setF({...f,pwd:e.target.value})} placeholder="設定密碼" maxLength={20} className="w-full px-3 py-2.5 border-2 border-yellow-300 rounded-xl"/></div>}
+            <button type="submit" disabled={sub} className={`w-full py-3.5 btn-p rounded-xl font-bold text-lg shadow-lg ${sub?'opacity-50':''}`}>{sub?'建立中...':'🚀 建立團購'}</button>
+          </form></div></div>
+
+          <div className="lg:col-span-2"><div className="bg-white rounded-2xl shadow-md border overflow-hidden anim-fade sticky top-16" style={{animationDelay:'150ms'}}>
+            <div className="bg-gradient-to-r from-green-500 to-teal-500 px-4 py-3 text-white"><h3 className="font-bold text-sm">📋 菜單預覽</h3></div>
+            <div className="p-3">{mm.length>0?(<><div className="flex gap-1 mb-2 flex-wrap">{[{k:'all',l:'全部'},...CATS.map(c=>({k:c.k,l:c.s}))].map(c=><button key={c.k} onClick={()=>setMt(c.k)} className={`px-2.5 py-1 rounded-lg text-xs font-bold ${mt===c.k?'bg-green-100 text-green-800':'text-gray-400 hover:bg-gray-100'}`}>{c.l}</button>)}</div>
+              <div className="space-y-1.5 max-h-[400px] overflow-y-auto pr-1">{fmm.map(it=><div key={it.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-green-50 text-sm">
+                <div className="flex-1 min-w-0"><p className="font-bold text-gray-800 truncate">{it.name}</p>
+                  {it.sizes&&<p className="text-xs text-gray-400">{it.sizes.map(s=>s.label).join(' / ')}</p>}
+                </div>
+                <span className="font-bold text-green-700 shrink-0 text-xs">{it.sizes?it.sizes.map(s=>`$${s.price}`).join('/'):(`NT$${it.price}`)}</span>
+              </div>)}</div>
+            </>):<div className="text-center py-8 text-gray-300"><p className="text-2xl mb-1">📋</p><p className="text-xs">{f.mid?'此商家尚無菜單':'選擇商家顯示菜單'}</p></div>}</div>
+          </div></div>
+        </div>
+      </main>
+    </div>);
+  };
+
+  // ===== DETAIL PAGE (點餐介面) =====
+  const Detail=()=>{
+    const[ords,setOrds]=useState([]);const[ldO,setLdO]=useState(true);const[eId,setEId]=useState(null);const[ef,setEf]=useState({});const[sc,setSc]=useState(false);const[dm,setDm]=useState([]);
+    const g=sel;const act=isAct(g.end_date);const url=shareUrl(g.code);
+
+    // Ordering state
+    const[oName,setOName]=useState(cName());
+    const[oItem,setOItem]=useState(null);const[oSize,setOSize]=useState(null);const[oSugar,setOSugar]=useState('正常');const[oIce,setOIce]=useState('正常冰');const[oQty,setOQty]=useState(1);const[oNote,setONote]=useState('');
+    const[cart,setCart]=useState([]);const[showCart,setShowCart]=useState(false);
+
+    useEffect(()=>{sb.from('merchants').select('id').eq('name',g.shop_name).then(({data:md})=>{if(md&&md.length>0)sb.from('menus').select('*').eq('merchant_id',md[0].id).order('category').order('name').then(({data})=>{if(data)setDm(data)})})},[g.shop_name]);
+    const ldOrds=useCallback(async()=>{setLdO(true);const{data}=await sb.from('orders').select('*').eq('group_buy_id',g.id).order('created_at',{ascending:true});if(data)setOrds(data);setLdO(false)},[g.id]);
+    useEffect(()=>{ldOrds()},[ldOrds]);
+
+    const delOrd=async(id)=>{if(!confirm('確定刪除？'))return;await sb.from('orders').delete().eq('id',id);show('已刪除');ldOrds()};
+    const saveEd=async(id)=>{await sb.from('orders').update({items:ef.items,amount:parseFloat(ef.amt)}).eq('id',id);show('已更新');setEId(null);ldOrds()};
+    const tot=ords.reduce((s,o)=>s+parseFloat(o.amount||0),0);
+    const sum={};ords.forEach(o=>{if(!sum[o.customer_name])sum[o.customer_name]={items:[],total:0};sum[o.customer_name].items.push(o.items);sum[o.customer_name].total+=parseFloat(o.amount||0)});
+
+    const cpSh=async()=>{const msg=`🍱 團購：${g.title}\n🏪 ${g.shop_name}\n📅 截止 ${fmtD(g.end_date)}\n👉 ${url}\n🔑 ${g.code}${g.password?'\n🔐 密碼：'+g.password:''}`;try{await navigator.clipboard.writeText(msg)}catch{const t=document.createElement('textarea');t.value=msg;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t)};setSc(true);setTimeout(()=>setSc(false),2000)};
+
+    // Select menu item to order
+    const selectItem=(item)=>{setOItem(item);setOSize(item.sizes?item.sizes[0]:null);setOSugar('正常');setOIce('正常冰');setOQty(1);setONote('')};
+
+    const getItemPrice=()=>{if(oSize)return oSize.price;if(oItem)return oItem.price;return 0};
+
+    const addToCart=()=>{if(!oItem)return;
+      const price=getItemPrice();
+      let desc=oItem.name;
+      if(oSize)desc+=`（${oSize.label}）`;
+      if(oItem.has_custom_options||oItem.category==='drink'){
+        if(oSugar!=='正常')desc+=` ${oSugar}`;
+        if(oIce!=='正常冰')desc+=` ${oIce}`;
+      }
+      setCart(p=>[...p,{name:desc,price,qty:oQty,subtotal:price*oQty}]);
+      setOItem(null);setOSize(null);show(`✅ ${desc} x${oQty} 已加入`,'info');
+    };
+
+    const rmCart=(i)=>setCart(p=>p.filter((_,j)=>j!==i));
+    const cartTotal=cart.reduce((s,c)=>s+c.subtotal,0);
+
+    const submitOrder=async()=>{if(!oName.trim()){show('請輸入姓名','error');return}
+      if(!cart.length){show('購物車是空的','warning');return}
+      const itemsText=cart.map(c=>`${c.name} x${c.qty}`).join('\n');
+      const{error}=await sb.from('orders').insert([{group_buy_id:g.id,customer_name:oName.trim(),items:itemsText,amount:cartTotal,user_id:user?.id||null,note:oNote||null}]);
+      if(error)show('送出失敗','error');else{show('訂單送出成功！');setCart([]);setONote('');ldOrds();setShowCart(false)}
+    };
+
+    // Manual add (text mode) for when no menu
+    const[manualMode,setManualMode]=useState(false);const[mf,setMf]=useState({items:'',amt:''});
+    const submitManual=async(e)=>{e.preventDefault();if(!oName.trim()||!mf.items.trim()||!mf.amt)return;
+      const{error}=await sb.from('orders').insert([{group_buy_id:g.id,customer_name:oName.trim(),items:mf.items.trim(),amount:parseFloat(mf.amt),user_id:user?.id||null}]);
+      if(error)show('失敗','error');else{show('訂單新增成功！');setMf({items:'',amt:''});ldOrds()}
+    };
+
+    // Group menu by category
+    const menuByCategory=useMemo(()=>{const m={};dm.forEach(it=>{const c=it.category||'main';if(!m[c])m[c]=[];m[c].push(it)});return m},[dm]);
+
+    return(<div className="min-h-screen bg-pattern"><Nav/>
+      <main className="max-w-5xl mx-auto px-4 py-5 space-y-5">
+        {/* Header */}
+        <div className="bg-white rounded-2xl shadow-md p-5 border border-orange-100 anim-fade">
+          <div className="flex flex-wrap justify-between items-start gap-3">
+            <div><button onClick={goHome} className="text-orange-500 text-xs mb-1">← 返回</button><h2 className="text-xl font-black text-orange-900">{g.title}</h2><p className="text-orange-600 text-sm mt-0.5">🏪 {g.shop_name} ・ 👤 {g.organizer_name}</p>{g.description&&<p className="mt-2 text-orange-700 bg-orange-50 px-3 py-1.5 rounded-lg text-xs">{g.description}</p>}</div>
+            <div className="text-right shrink-0"><span className={`px-2.5 py-1 rounded-full text-xs font-bold ${act?'bg-green-100 text-green-700':'bg-gray-100 text-gray-500'}`}>{act?'🟢 進行中':'🔴 已結束'}</span><p className="text-xs text-orange-500 mt-1">截止 {fmtD(g.end_date)}</p></div>
+          </div>
+          <div className="grid grid-cols-3 gap-2 mt-4">
+            <div className="bg-orange-50 rounded-xl p-2.5 text-center"><p className="text-xl font-black text-orange-900">NT${tot.toLocaleString()}</p><p className="text-xs text-orange-500">總金額</p></div>
+            <div className="bg-orange-50 rounded-xl p-2.5 text-center"><p className="text-xl font-black text-orange-900">{ords.length}</p><p className="text-xs text-orange-500">筆訂單</p></div>
+            <div className="bg-orange-50 rounded-xl p-2.5 text-center"><p className="text-xl font-black text-orange-900">{Object.keys(sum).length}</p><p className="text-xs text-orange-500">人</p></div>
+          </div>
+          <div className="mt-4 p-3 bg-gray-50 rounded-xl border flex flex-wrap gap-2 items-center justify-between">
+            <div className="flex items-center gap-2"><span className="text-xs text-gray-500">代碼</span><span className="font-mono font-black text-lg text-orange-900 tracking-[.2em]">{g.code}</span></div>
+            <button onClick={cpSh} className={`px-4 py-2 rounded-xl font-bold text-xs ${sc?'bg-green-500 text-white':'btn-p shadow'}`}>{sc?'✅ 已複製':'📲 分享到 Line'}</button>
+          </div>
+        </div>
+
+        {act&&<div className="grid md:grid-cols-5 gap-5">
+          {/* LEFT: Menu ordering */}
+          <div className="md:col-span-3 space-y-4">
+            {/* Name input */}
+            <div className="bg-white rounded-2xl shadow-sm p-4 border border-orange-100 anim-fade">
+              <label className="block text-sm font-bold text-orange-900 mb-1.5">你的姓名</label>
+              <input type="text" value={oName} onChange={e=>setOName(e.target.value)} placeholder="輸入姓名" className="w-full px-3 py-2.5 border-2 border-orange-200 rounded-xl focus:border-orange-500 focus:outline-none text-center font-bold"/>
+            </div>
+
+            {dm.length>0?(<>
+              {/* Menu by category */}
+              {CATS.map(cat=>{const items=menuByCategory[cat.k];if(!items||!items.length)return null;
+                return(<div key={cat.k} className="bg-white rounded-2xl shadow-sm p-4 border border-orange-100 anim-fade">
+                  <h3 className="font-bold text-orange-900 mb-3">{cat.l}</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {items.map(it=>{
+                      const isSelected=oItem?.id===it.id;
+                      return(<button key={it.id} onClick={()=>selectItem(it)} className={`p-3 rounded-xl text-left transition-all border-2 ${isSelected?'border-orange-500 bg-orange-50 shadow-md':'border-gray-100 hover:border-orange-200 hover:bg-orange-50/50'}`}>
+                        <p className="font-bold text-sm text-gray-800 truncate">{it.name}</p>
+                        <p className="text-orange-600 font-bold text-sm mt-0.5">{it.sizes?it.sizes.map(s=>`$${s.price}`).join(' / '):`NT$${it.price}`}</p>
+                        {it.has_custom_options&&<span className="text-xs text-purple-500">☕可客製</span>}
+                      </button>);
+                    })}
+                  </div>
+                </div>);
+              })}
+
+              {/* Customization panel */}
+              {oItem&&<div className="bg-white rounded-2xl shadow-md p-5 border-2 border-orange-300 anim-slide">
+                <h3 className="font-bold text-orange-900 mb-3">🛒 {oItem.name} 客製選項</h3>
+
+                {/* Size selection */}
+                {oItem.sizes&&oItem.sizes.length>0&&<div className="mb-4">
+                  <p className="text-sm font-bold text-gray-700 mb-2">規格</p>
+                  <div className="flex gap-2 flex-wrap">{oItem.sizes.map((s,i)=><button key={i} onClick={()=>setOSize(s)} className={`size-btn ${oSize?.label===s.label?'active':''}`}><span className="block text-sm">{s.label}</span><span className="block text-xs mt-0.5">NT${s.price}</span></button>)}</div>
+                </div>}
+
+                {/* Sugar level */}
+                {(oItem.has_custom_options||oItem.category==='drink')&&<div className="mb-4">
+                  <p className="text-sm font-bold text-gray-700 mb-2">甜度</p>
+                  <div className="flex gap-1.5 flex-wrap">{SUGARS.map(s=><button key={s} onClick={()=>setOSugar(s)} className={`opt-btn opt-btn-sm ${oSugar===s?'active':''}`}>{s}</button>)}</div>
+                </div>}
+
+                {/* Ice level */}
+                {(oItem.has_custom_options||oItem.category==='drink')&&<div className="mb-4">
+                  <p className="text-sm font-bold text-gray-700 mb-2">冰塊</p>
+                  <div className="flex gap-1.5 flex-wrap">{ICES.map(s=><button key={s} onClick={()=>setOIce(s)} className={`opt-btn opt-btn-sm ${oIce===s?'active':''}`}>{s}</button>)}</div>
+                </div>}
+
+                {/* Quantity */}
+                <div className="mb-4">
+                  <p className="text-sm font-bold text-gray-700 mb-2">數量</p>
+                  <div className="flex items-center gap-3"><button onClick={()=>setOQty(q=>Math.max(1,q-1))} className="w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 font-bold text-xl flex items-center justify-center">−</button><span className="text-2xl font-black w-10 text-center">{oQty}</span><button onClick={()=>setOQty(q=>q+1)} className="w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 font-bold text-xl flex items-center justify-center">+</button></div>
+                </div>
+
+                <div className="flex items-center justify-between pt-3 border-t">
+                  <p className="text-lg font-black text-orange-900">小計：NT${(getItemPrice()*oQty).toLocaleString()}</p>
+                  <button onClick={addToCart} className="px-6 py-2.5 btn-p rounded-xl font-bold shadow">加入購物車</button>
+                </div>
+              </div>}
+
+              {/* Cart */}
+              {cart.length>0&&<div className="bg-white rounded-2xl shadow-md p-5 border border-green-200 anim-fade">
+                <div className="flex justify-between items-center mb-3"><h3 className="font-bold text-green-900">🛒 我的購物車（{cart.length}）</h3><p className="font-black text-green-700 text-lg">NT${cartTotal.toLocaleString()}</p></div>
+                <div className="space-y-2 mb-4">{cart.map((c,i)=><div key={i} className="flex justify-between items-center p-2.5 bg-green-50 rounded-xl"><div><p className="font-bold text-sm text-gray-800">{c.name}</p><p className="text-xs text-gray-500">x{c.qty} ＝ NT${c.subtotal}</p></div><button onClick={()=>rmCart(i)} className="text-red-400 hover:text-red-600 text-sm px-2">✕</button></div>)}</div>
+                <button onClick={submitOrder} className="w-full py-3.5 btn-g rounded-xl font-bold text-base shadow-lg">✅ 送出訂單（NT${cartTotal.toLocaleString()}）</button>
+              </div>}
+            </>)
+            :(<div className="bg-white rounded-2xl shadow-sm p-5 border border-orange-100 anim-fade">
+              <div className="flex items-center justify-between mb-3"><h3 className="font-bold text-orange-900">手動輸入訂單</h3></div>
+              <form onSubmit={submitManual} className="space-y-3">
+                <div><label className="block text-sm font-bold text-orange-800 mb-1">品項 *</label><textarea required value={mf.items} onChange={e=>setMf({...mf,items:e.target.value})} placeholder={"雞腿便當 x1\n珍珠奶茶 x1"} rows={3} className="w-full px-3 py-2.5 border-2 border-orange-200 rounded-xl focus:border-orange-500 focus:outline-none resize-none"/></div>
+                <div><label className="block text-sm font-bold text-orange-800 mb-1">金額 NT$ *</label><input type="number" required value={mf.amt} onChange={e=>setMf({...mf,amt:e.target.value})} min="0" className="w-full px-3 py-2.5 border-2 border-orange-200 rounded-xl focus:border-orange-500 focus:outline-none"/></div>
+                <button type="submit" className="w-full py-3 btn-p rounded-xl font-bold shadow">加入訂單</button>
+              </form>
+            </div>)}
+          </div>
+
+          {/* RIGHT: Order list */}
+          <div className="md:col-span-2 space-y-4">
+            <div className="bg-white rounded-2xl shadow-sm p-4 border border-orange-100 anim-fade sticky top-16">
+              <h3 className="font-bold text-orange-900 mb-3">📋 訂單明細（{ords.length}筆）</h3>
+              <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
+                {ldO?<p className="text-center py-6 text-orange-400 text-sm">載入中...</p>:ords.length===0?<p className="text-center py-6 text-orange-400 text-sm">尚無訂單</p>
+                :ords.map(o=><div key={o.id} className="p-3 bg-orange-50 rounded-xl border border-orange-100 order-item-card group">
+                  {eId===o.id?(<div className="space-y-2"><textarea value={ef.items} onChange={e=>setEf({...ef,items:e.target.value})} className="w-full px-2.5 py-2 border rounded-lg text-sm" rows={2}/><input type="number" value={ef.amt} onChange={e=>setEf({...ef,amt:e.target.value})} className="w-full px-2.5 py-2 border rounded-lg text-sm"/><div className="flex gap-2"><button onClick={()=>saveEd(o.id)} className="px-3 py-1 bg-green-500 text-white rounded-lg text-xs font-bold">儲存</button><button onClick={()=>setEId(null)} className="px-3 py-1 bg-gray-200 text-gray-600 rounded-lg text-xs">取消</button></div></div>)
+                  :(<><div className="flex justify-between items-start mb-1"><span className="font-bold text-orange-900 text-sm">{o.customer_name}</span><span className="font-bold text-orange-600 shrink-0 ml-2 text-sm">NT${parseFloat(o.amount).toLocaleString()}</span></div><p className="text-xs text-orange-700 whitespace-pre-line leading-relaxed">{o.items}</p><div className="flex gap-2 mt-1.5 opacity-0 group-hover:opacity-100 transition"><button onClick={()=>{setEId(o.id);setEf({items:o.items,amt:o.amount})}} className="text-xs text-blue-500 font-bold">✏️</button><button onClick={()=>delOrd(o.id)} className="text-xs text-red-400 font-bold">🗑</button></div></>)}
+                </div>)}
+              </div>
+            </div>
+          </div>
+        </div>}
+
+        {/* If closed, show orders read-only */}
+        {!act&&<div className="bg-white rounded-2xl shadow-sm p-4 border border-orange-100 anim-fade">
+          <h3 className="font-bold text-orange-900 mb-3">📋 訂單明細</h3>
+          <div className="space-y-2 max-h-[400px] overflow-y-auto">
+            {ords.map(o=><div key={o.id} className="p-3 bg-orange-50 rounded-xl"><div className="flex justify-between"><span className="font-bold text-sm">{o.customer_name}</span><span className="font-bold text-orange-600 text-sm">NT${parseFloat(o.amount).toLocaleString()}</span></div><p className="text-xs text-orange-700 whitespace-pre-line">{o.items}</p></div>)}
+          </div>
+        </div>}
+
+        {/* Settlement */}
+        {Object.keys(sum).length>0&&<div className="bg-white rounded-2xl shadow-md p-5 border border-orange-100 anim-fade">
+          <h3 className="font-bold text-orange-900 mb-4">💰 結算摘要 — 每人應付金額</h3>
+          <div className="overflow-x-auto"><table className="w-full text-left"><thead><tr className="border-b-2 border-orange-200"><th className="py-2 pr-3 text-xs text-orange-700">姓名</th><th className="py-2 pr-3 text-xs text-orange-700">品項</th><th className="py-2 text-xs text-orange-700 text-right">應付</th></tr></thead>
+            <tbody>{Object.entries(sum).map(([n,d])=><tr key={n} className="border-b border-orange-50"><td className="py-2.5 pr-3 font-bold text-orange-900 text-sm">{n}</td><td className="py-2.5 pr-3 text-xs text-orange-700">{d.items.join('、')}</td><td className="py-2.5 text-right font-bold text-orange-600 text-sm">NT${d.total.toLocaleString()}</td></tr>)}</tbody>
+            <tfoot><tr className="border-t-2 border-orange-300"><td className="py-3 font-black text-orange-900" colSpan={2}>合計</td><td className="py-3 text-right font-black text-orange-900 text-lg">NT${tot.toLocaleString()}</td></tr></tfoot>
+          </table></div>
+        </div>}
+      </main>
+    </div>);
+  };
+
+  // ===== ROUTER =====
+  const R=()=>{switch(view){
+    case 'login':return <Login/>;case 'create':return <Create/>;case 'merchants':return <MerchantsPage/>;
+    case 'detail':return sel?<Detail/>:<Home/>;default:return <Home/>}};
+
+  return(<>{R()}{toast&&<Toast {...toast} onClose={()=>setToast(null)}/>}{shareModal&&<ShareModal groupBuy={shareModal} onClose={()=>{setShareModal(null);setView('home')}}/>}</>);
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<GroupBuyApp/>);
+</script>
+</body>
+</html>
